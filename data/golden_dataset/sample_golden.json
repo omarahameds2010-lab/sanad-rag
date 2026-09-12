@@ -1,0 +1,45 @@
+{
+  "_schema_notes": "Each entry: question -> the correct source document(s) and chunk_ids that should be retrieved, plus a human-written reference_answer. relevant_chunk_ids use the same {source_id}::{chunk_index} format produced by src/ingestion/pipeline.py. This sample set uses small placeholder documents so the harness can be tested end-to-end immediately — replace with real domain documents (educational/legal Arabic content) before trusting the numbers as a real benchmark. See docs/research.md for why a real, larger golden set matters.",
+
+  "source_documents": [
+    {
+      "source_id": "geo_sample_1",
+      "text": "القاهرة هي عاصمة جمهورية مصر العربية وأكبر مدنها. يمر نهر النيل، أطول أنهار العالم، عبر المدينة قبل أن يصب في البحر المتوسط. تأسست القاهرة الحديثة في العصر الفاطمي."
+    },
+    {
+      "source_id": "geo_sample_2",
+      "text": "الرياض هي عاصمة المملكة العربية السعودية وأكبر مدنها من حيث عدد السكان. تقع المدينة في هضبة نجد وسط شبه الجزيرة العربية."
+    },
+    {
+      "source_id": "science_sample_1",
+      "text": "التمثيل الضوئي هو العملية التي تحول بها النباتات ضوء الشمس إلى طاقة كيميائية. تحدث هذه العملية داخل البلاستيدات الخضراء الموجودة في خلايا النبات."
+    }
+  ],
+
+  "questions": [
+    {
+      "id": "q1",
+      "question": "ما هي عاصمة مصر؟",
+      "relevant_chunk_ids": ["geo_sample_1::0"],
+      "reference_answer": "القاهرة هي عاصمة مصر."
+    },
+    {
+      "id": "q2",
+      "question": "ما هو أطول نهر في العالم ويمر بالقاهرة؟",
+      "relevant_chunk_ids": ["geo_sample_1::0"],
+      "reference_answer": "نهر النيل."
+    },
+    {
+      "id": "q3",
+      "question": "أين تقع مدينة الرياض؟",
+      "relevant_chunk_ids": ["geo_sample_2::0"],
+      "reference_answer": "تقع الرياض في هضبة نجد وسط شبه الجزيرة العربية."
+    },
+    {
+      "id": "q4",
+      "question": "أين تحدث عملية التمثيل الضوئي داخل خلية النبات؟",
+      "relevant_chunk_ids": ["science_sample_1::0"],
+      "reference_answer": "تحدث داخل البلاستيدات الخضراء."
+    }
+  ]
+}

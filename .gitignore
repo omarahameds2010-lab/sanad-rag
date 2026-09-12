@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.env
+venv/
+.venv/
+*.egg-info/
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+.DS_Store
+qdrant_storage/
+data/sanad.db
+data/qdrant_local/
+data/sanad.db
