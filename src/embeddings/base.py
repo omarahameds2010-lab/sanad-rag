@@ -44,7 +44,10 @@ class SentenceTransformerEmbedding(EmbeddingModel):
 
     @property
     def dimensions(self) -> int:
-        return self._model.get_sentence_embedding_dimension()
+        get_dim = getattr(self._model, "get_embedding_dimension", None)
+        if callable(get_dim):
+            return get_dim()
+        return self._model.get_sentence_embedding_dimension()  # legacy API
 
 
 class OpenAIEmbedding(EmbeddingModel):

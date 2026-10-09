@@ -40,6 +40,14 @@ from src.api.deps import (
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    # Warm up the embedding model once so per-request loads (slow + flaky
+    # for 2GB models) never happen. Non-fatal: endpoints fail loudly anyway.
+    try:
+        from src.api.deps import warmup_embedding_model
+
+        warmup_embedding_model()
+    except Exception as e:
+        print(f"[WARNING] embedding warmup failed: {e}")
     yield
 
 

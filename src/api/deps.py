@@ -3,11 +3,16 @@ Shared dependencies for SANAD API.
 Moved here to avoid circular imports.
 """
 
-from src.embeddings.base import HashEmbedding, SentenceTransformerEmbedding
+from src.embeddings.base import EmbeddingModel, HashEmbedding, SentenceTransformerEmbedding
 from src.generation.llm_client import AnthropicLLM, FakeLLM, GeminiLLM
 
+# Process-wide cache: loading a 2GB embedding model per request is slow
+# and flaky (each load re-validates the HF cache). Load once, reuse.
+# Keyed by EMBEDDING_MODEL choice so A/B comparisons stay isolated.
+_embedding_singleton: dict[str, EmbeddingModel] = {}
 
-def _get_embedding_model():
+
+def _get_embedding_model() -> EmbeddingModel:
     """
     Selects the embedding backend. Defaults to HashEmbedding because this
     sandboxed environment has no network access to huggingface.co or an
@@ -18,11 +23,27 @@ def _get_embedding_model():
     import os
 
     choice = os.environ.get("EMBEDDING_MODEL", "hash-dev")
-    if choice == "multilingual-e5":
-        return SentenceTransformerEmbedding()
-    if choice == "bge-m3":
-        return SentenceTransformerEmbedding(model_name="BAAI/bge-m3")
-    return HashEmbedding()
+    if choice not in _embedding_singleton:
+        if choice == "multilingual-e5":
+            _embedding_singleton[choice] = SentenceTransformerEmbedding()
+        elif choice == "bge-m3":
+            _embedding_singleton[choice] = SentenceTransformerEmbedding(model_name="BAAI/bge-m3")
+        else:
+            _embedding_singleton[choice] = HashEmbedding()
+    return _embedding_singleton[choice]
+
+
+def warmup_embedding_model() -> None:
+    """Pre-load the embedding model at startup so the first request isn't slow.
+
+    Raises on failure — callers decide whether a missing model is fatal.
+    """
+    _get_embedding_model()
+
+
+def reset_embedding_singleton_for_testing() -> None:
+    """Clears the cache — used by tests that switch EMBEDDING_MODEL."""
+    _embedding_singleton.clear()
 
 
 def _get_llm_clients():
@@ -34,17 +55,10 @@ def _get_llm_clients():
     """
     import os
 
-    print(f"[DEBUG] ANTHROPIC_API_KEY set: {bool(os.environ.get('ANTHROPIC_API_KEY'))}")
-    print(f"[DEBUG] GEMINI_API_KEY set: {bool(os.environ.get('GEMINI_API_KEY'))}")
-    print(f"[DEBUG] GEMINI_API_KEY value: {os.environ.get('GEMINI_API_KEY', '')[:20]}...")
-
     if os.environ.get("ANTHROPIC_API_KEY"):
-        print("[DEBUG] Using AnthropicLLM")
         return AnthropicLLM(), FakeLLM()
     if os.environ.get("GEMINI_API_KEY"):
-        print("[DEBUG] Using GeminiLLM")
         return GeminiLLM(), FakeLLM()
-    print("[DEBUG] Using FakeLLM (no API keys found)")
     return FakeLLM(), None
 
 
