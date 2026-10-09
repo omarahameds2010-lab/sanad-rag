@@ -36,6 +36,7 @@ def test_answer_question_returns_full_contract(isolated_qdrant):
         question="ما هي عاصمة مصر؟",
         embedding_model=embedding_model,
         primary_llm=FakeLLM(),
+        chunker_type="arabic",
     )
 
     assert "answer" in result
@@ -47,16 +48,19 @@ def test_answer_question_returns_full_contract(isolated_qdrant):
 
 def test_answer_question_with_no_ingested_data_does_not_crash(isolated_qdrant):
     embedding_model = HashEmbedding(dims=32)
-    from src.retrieval.vector_store import get_client, ensure_collection
+    from src.retrieval.vector_store import get_client, ensure_collection, collection_for_chunker
 
     # ensure the collection exists (empty) so retrieval has something to
     # query against, mirroring what /health checks for
-    ensure_collection(get_client(), dims=embedding_model.dimensions)
+    ensure_collection(
+        get_client(), dims=embedding_model.dimensions, collection=collection_for_chunker("arabic", embedding_model.dimensions)
+    )
 
     result = answer_question(
         question="سؤال عن بيانات غير موجودة",
         embedding_model=embedding_model,
         primary_llm=FakeLLM(),
+        chunker_type="arabic",
     )
     assert result["answer"]  # FakeLLM's "no info" fallback answer
     assert result["cited_chunk_ids"] == []
@@ -84,6 +88,7 @@ def test_primary_llm_failure_falls_back(isolated_qdrant):
         embedding_model=embedding_model,
         primary_llm=BrokenLLM(),
         fallback_llm=FakeLLM(),
+        chunker_type="arabic",
     )
     assert "fallback" in result["model_used"]
     assert result["answer"]  # fallback still produced an answer, no crash

@@ -1,5 +1,5 @@
 """
-Evaluation harness — Phase 6. This is the module that turns the golden
+Evaluation harness — Phase 6/8. This is the module that turns the golden
 dataset into real, stored numbers. It does NOT invent anything: every
 number in the returned report traces back to an actual retrieval call
 against the current index.
@@ -27,6 +27,7 @@ from src.evaluation.metrics import (
     evaluate_retrieval,
 )
 from src.evaluation.storage import record_evaluation_run
+from src.retrieval.reranker import CrossEncoderReranker
 
 
 def load_golden_dataset(path: str) -> dict:
@@ -34,13 +35,16 @@ def load_golden_dataset(path: str) -> dict:
         return json.load(f)
 
 
-def ingest_golden_sources(golden_data: dict, embedding_model: EmbeddingModel) -> None:
+def ingest_golden_sources(
+    golden_data: dict, embedding_model: EmbeddingModel, chunker_type: str = "arabic"
+) -> None:
     """Idempotent: re-running this just re-upserts the same chunk_ids."""
     for doc in golden_data.get("source_documents", []):
         ingest_document(
             source_id=doc["source_id"],
             raw_text=doc["text"],
             embedding_model=embedding_model,
+            chunker_type=chunker_type,
         )
 
 
@@ -50,6 +54,9 @@ def run_evaluation(
     llm: LLMClient,
     config_name: str = "baseline",
     top_k: int = 5,
+    chunker_type: str = "arabic",
+    enable_reranking: bool = False,
+    enable_query_expansion: bool = False,
 ) -> dict:
     """
     Runs every question in the golden dataset through the real query
@@ -58,7 +65,7 @@ def run_evaluation(
     """
     if embedding_model.name.endswith("DEV-ONLY") or llm.name.endswith("DEV-ONLY"):
         print(
-            "⚠️  WARNING: running evaluation with a dev-only backend "
+            "[WARNING] running evaluation with a dev-only backend "
             f"(embedding={embedding_model.name}, llm={llm.name}). "
             "These numbers prove the harness works end-to-end — they are "
             "NOT real retrieval-quality or groundedness numbers. Do not "
@@ -66,7 +73,9 @@ def run_evaluation(
         )
 
     golden_data = load_golden_dataset(golden_dataset_path)
-    ingest_golden_sources(golden_data, embedding_model)
+    ingest_golden_sources(golden_data, embedding_model, chunker_type=chunker_type)
+
+    reranker = CrossEncoderReranker() if enable_reranking else None
 
     golden_examples = [
         GoldenExample(
@@ -84,6 +93,9 @@ def run_evaluation(
             embedding_model=embedding_model,
             primary_llm=llm,
             top_k=top_k,
+            reranker=reranker,
+            chunker_type=chunker_type,
+            enable_query_expansion=enable_query_expansion,
         )
         retrieval_results.append(
             RetrievalResult(
@@ -97,6 +109,9 @@ def run_evaluation(
     metrics["config_name"] = config_name
     metrics["embedding_model"] = embedding_model.name
     metrics["llm_model"] = llm.name
+    metrics["chunker_type"] = chunker_type
+    metrics["reranker_used"] = reranker.name if reranker else "none"
+    metrics["query_expansion_enabled"] = enable_query_expansion
     metrics["is_dev_only_run"] = embedding_model.name.endswith("DEV-ONLY") or llm.name.endswith(
         "DEV-ONLY"
     )

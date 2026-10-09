@@ -14,9 +14,21 @@ from src.evaluation.storage import (
     get_evaluation_run,
 )
 
+# Test API key
+TEST_API_KEY = "demo-key-123"
+
 
 @pytest.fixture
 def client():
+    with TestClient(app) as c:
+        # Add API key header to all requests
+        c.headers.update({"X-API-Key": TEST_API_KEY})
+        yield c
+
+
+@pytest.fixture
+def client_no_auth():
+    """Client without API key for testing auth failures."""
     with TestClient(app) as c:
         yield c
 
@@ -26,6 +38,11 @@ def test_health_reports_dependency_status(client):
     assert r.status_code == 200
     body = r.json()
     assert "status" in body and "qdrant_ok" in body and "db_ok" in body
+
+
+def test_health_no_auth(client_no_auth):
+    r = client_no_auth.get("/health")
+    assert r.status_code == 200  # health endpoint doesn't require auth
 
 
 def test_ingest_validates_empty_source_id(client):
@@ -41,6 +58,11 @@ def test_ingest_returns_success_with_real_pipeline(client):
     assert body["source_id"] == "doc1"
 
 
+def test_ingest_requires_auth(client_no_auth):
+    r = client_no_auth.post("/ingest", json={"source_id": "doc1", "text": "نص"})
+    assert r.status_code == 401
+
+
 def test_query_returns_answer_with_real_pipeline(client):
     r = client.post("/query", json={"question": "ما هو الموضوع؟"})
     assert r.status_code == 200
@@ -49,9 +71,19 @@ def test_query_returns_answer_with_real_pipeline(client):
     assert "retrieval_ms" in body and "generation_ms" in body
 
 
+def test_query_requires_auth(client_no_auth):
+    r = client_no_auth.post("/query", json={"question": "ما هو الموضوع؟"})
+    assert r.status_code == 401
+
+
 def test_evaluate_report_404_for_unknown_run(client):
     r = client.get("/evaluate/report", params={"run_id": "does-not-exist"})
     assert r.status_code == 404
+
+
+def test_evaluate_report_404_requires_auth(client_no_auth):
+    r = client_no_auth.get("/evaluate/report", params={"run_id": "does-not-exist"})
+    assert r.status_code == 401
 
 
 def test_evaluate_report_returns_stored_metrics(client):
@@ -71,3 +103,14 @@ def test_evaluate_report_returns_stored_metrics(client):
     assert result is not None
     assert result["precision_at_k"] == 0.8
     assert result["n_examples"] == 10
+
+
+def test_evaluate_report_requires_auth(client_no_auth):
+    run_id = str(uuid.uuid4())
+    record_evaluation_run(
+        run_id=run_id,
+        config_name="baseline",
+        metrics={"n_examples": 1, "precision_at_k": 0.5, "recall_at_k": 0.5},
+    )
+    r = client_no_auth.get("/evaluate/report", params={"run_id": run_id})
+    assert r.status_code == 401

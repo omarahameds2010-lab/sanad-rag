@@ -71,13 +71,15 @@ def append_benchmark_result(metrics: dict, benchmark_file: str = "docs/benchmark
                 "traceability.\n\n"
             )
             f.write(
-                "| Timestamp | Config | Embedding | LLM | N | Precision@k | "
-                "Recall@k | p50 latency (s) | p95 latency (s) | Dev-only? | run_id |\n"
+                "| Timestamp | Config | Chunker | Reranker | Embedding | LLM | N | "
+                "Precision@k | Recall@k | p50 latency (s) | p95 latency (s) | "
+                "Dev-only? | run_id |\n"
             )
-            f.write("|---|---|---|---|---|---|---|---|---|---|---|\n")
+            f.write("|---|---|---|---|---|---|---|---|---|---|---|---|---|\n")
 
         f.write(
             f"| {datetime.now(timezone.utc).isoformat()} | {metrics['config_name']} | "
+            f"{metrics.get('chunker_type', 'arabic')} | {metrics.get('reranker_used', 'none')} | "
             f"{metrics['embedding_model']} | {metrics['llm_model']} | "
             f"{metrics['n_examples']} | {metrics['precision_at_k']} | "
             f"{metrics['recall_at_k']} | {metrics['p50_latency_seconds']} | "
@@ -91,6 +93,23 @@ def main():
     parser.add_argument("--golden", default="data/golden_dataset/sample_golden.json")
     parser.add_argument("--config", default="baseline")
     parser.add_argument("--top-k", type=int, default=5)
+    parser.add_argument(
+        "--chunker",
+        default="arabic",
+        choices=["arabic", "baseline"],
+        help="Chunking strategy for golden source ingestion (Phase 7 comparison arm)",
+    )
+    parser.add_argument(
+        "--rerank",
+        action="store_true",
+        help="Enable cross-encoder reranking (Phase 7 comparison arm)",
+    )
+    parser.add_argument(
+        "--no-append",
+        action="store_true",
+        help="Do not append the result to docs/benchmark_results.md "
+        "(use for dev-only smoke runs so they are never mistaken for real results)",
+    )
     args = parser.parse_args()
 
     metrics = run_evaluation(
@@ -99,9 +118,12 @@ def main():
         llm=get_real_llm(),
         config_name=args.config,
         top_k=args.top_k,
+        chunker_type=args.chunker,
+        enable_reranking=args.rerank,
     )
 
-    append_benchmark_result(metrics)
+    if not args.no_append:
+        append_benchmark_result(metrics)
 
     print("\n=== Evaluation Complete ===")
     for key, value in metrics.items():

@@ -9,7 +9,7 @@ import pytest
 
 from src.embeddings.base import HashEmbedding
 from src.ingestion.pipeline import ingest_document
-from src.retrieval.vector_store import get_client, search
+from src.retrieval.vector_store import get_client, search, collection_for_chunker
 
 
 ARABIC_SAMPLE = (
@@ -49,7 +49,8 @@ def test_ingested_chunks_are_retrievable_by_search(isolated_qdrant_path):
 
     client = get_client()
     query_vector = embedding_model.embed(["اللغة العربية"])[0]
-    results = search(client, query_vector, top_k=3)
+    collection = collection_for_chunker("arabic", embedding_model.dimensions)
+    results = search(client, query_vector, top_k=3, collection=collection)
 
     assert len(results) >= 1
     assert all(r["source_id"] == source_id for r in results)

@@ -18,6 +18,23 @@ from qdrant_client.models import Distance, PointStruct, VectorParams
 DEFAULT_LOCAL_PATH = "data/qdrant_local"
 COLLECTION_NAME = "sanad_chunks"
 
+
+def collection_for_chunker(chunker_type: str, dims: int | None = None) -> str:
+    """
+    Phase 7: baseline vs Arabic-aware chunking comparisons must not
+    clobber each other's vectors in one collection — both produce
+    chunk_ids of the form "{source_id}::{i}" so upserting the second
+    config would overwrite the first, corrupting the comparison.
+    Including the embedding dimension also prevents a subtle crash when
+    EMBEDDING_MODEL changes (a 128-dim HashEmbedding index cannot accept
+    768-dim multilingual-e5 vectors): different models land in different
+    collections instead of failing with a cryptic dim-mismatch error.
+    """
+    if dims is None:
+        return f"{COLLECTION_NAME}_{chunker_type}"
+    return f"{COLLECTION_NAME}_{chunker_type}_{dims}"
+
+
 _client_singleton: QdrantClient | None = None
 
 
@@ -81,9 +98,12 @@ def search(
     query_vector: list[float],
     top_k: int = 5,
     collection: str = COLLECTION_NAME,
+    query_filter=None,
 ) -> list[dict]:
+    from qdrant_client.models import Filter
+    
     results = client.query_points(
-        collection_name=collection, query=query_vector, limit=top_k
+        collection_name=collection, query=query_vector, limit=top_k, query_filter=query_filter
     ).points
     return [{"chunk_id": r.payload["chunk_id"], "score": r.score, **r.payload} for r in results]
 

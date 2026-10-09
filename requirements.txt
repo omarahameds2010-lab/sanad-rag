@@ -4,6 +4,10 @@ uvicorn[standard]==0.30.6
 pydantic==2.9.2
 python-dotenv==1.0.1
 
+# Security (Phase 9)
+# Rate limiting, API key auth, security headers, CORS
+starlette==0.41.2
+
 # NLP / Arabic processing
 pyarabic==0.6.15
 camel-tools==1.5.5
@@ -19,6 +23,7 @@ qdrant-client==1.11.2
 # LLM (Phase 5)
 openai==1.51.0
 anthropic==0.36.2
+google-genai==2.29.0
 
 # Retrieval / reranking
 rank-bm25==0.2.2
@@ -26,7 +31,7 @@ rank-bm25==0.2.2
 # Evaluation / analysis
 pandas==2.2.3
 numpy==1.26.4
-scikit-learn==1.5.2
+scikit-learn==1.9.0
 
 # Testing
 pytest==8.3.3

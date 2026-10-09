@@ -9,7 +9,7 @@ BM25 score) without needing to normalize either one — you only need the
 I weight these two scores" bugs.
 """
 
-from src.retrieval.vector_store import get_client, search as semantic_search
+from src.retrieval.vector_store import get_client, search as semantic_search, COLLECTION_NAME
 from src.retrieval.bm25_index import bm25_search
 
 RRF_K = 60  # standard RRF damping constant from the original paper
@@ -19,10 +19,11 @@ def hybrid_retrieve(
     question_vector: list[float],
     question_text: str,
     top_k: int = 5,
+    collection: str = COLLECTION_NAME,
 ) -> list[dict]:
     client = get_client()
-    semantic_results = semantic_search(client, question_vector, top_k=top_k * 2)
-    keyword_results = bm25_search(question_text, top_k=top_k * 2)
+    semantic_results = semantic_search(client, question_vector, top_k=top_k * 2, collection=collection)
+    keyword_results = bm25_search(question_text, top_k=top_k * 2, collection=collection)
 
     fused_scores: dict[str, float] = {}
     payload_by_id: dict[str, dict] = {}
