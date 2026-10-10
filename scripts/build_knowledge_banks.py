@@ -34,25 +34,26 @@ def read_seeds(name: str) -> list[list[str]]:
 
 def build_sarf() -> list[str]:
     out = ["## بنك جداول التصريف المولد"]
-    for row in read_seeds("seeds_verbs.txt"):
-        if len(row) != 8:
-            continue
-        p, pr, imp, mas, af, mf, ex, typ = row
-        out.append(f"تصريف الفعل {p}: الماضي {p} والمضارع {pr} والأمر {imp}.")
-        out.append(f"مصدر الفعل {p} هو {mas}.")
-        out.append(f"اسم الفاعل من الفعل {p} هو {af} واسم المفعول هو {mf}.")
-        out.append(f"الفعل {p} فعل {typ}.")
-        out.append(f"مثال تطبيقي على الفعل {p}: {ex}.")
-        out.append(f"مثال الرفع: {pr} الطالب بجد واجتهاد.")
-        out.append(f"مثال النصب: لن {pr} المهمل أبدا.")
-        out.append(f"مثال الجزم: لم {pr} المهمل أمس.")
+    for name in sorted(KNOWLEDGE.glob("seeds_verbs*.txt")):
+        for row in read_seeds(name.name):
+            if len(row) != 8:
+                continue
+            p, pr, imp, mas, af, mf, ex, typ = row
+            out.append(f"تصريف الفعل {p}: الماضي {p} والمضارع {pr} والأمر {imp}.")
+            out.append(f"مصدر الفعل {p} هو {mas}.")
+            out.append(f"اسم الفاعل من الفعل {p} هو {af} واسم المفعول هو {mf}.")
+            out.append(f"الفعل {p} فعل {typ}.")
+            out.append(f"مثال تطبيقي على الفعل {p}: {ex}.")
+            out.append(f"مثال الرفع: {pr} الطالب بجد واجتهاد.")
+            out.append(f"مثال النصب: لن {pr} المهمل أبدا.")
+            out.append(f"مثال الجزم: لم {pr} المهمل أمس.")
     return out
 
 
 def build_vocab() -> list[str]:
     out = ["## بنك المفردات المولد"]
-    for name in ("seeds_vocab_a.txt", "seeds_vocab_b.txt"):
-        for row in read_seeds(name):
+    for path in sorted(KNOWLEDGE.glob("seeds_vocab*.txt")):
+        for row in read_seeds(path.name):
             if len(row) != 5:
                 continue
             w, meaning, ant, pl, ex = row
