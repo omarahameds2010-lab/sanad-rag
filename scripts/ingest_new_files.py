@@ -8,10 +8,11 @@ HEADERS = {"Content-Type": "application/json", "X-API-Key": "demo-key-123"}
 ROOT = Path(__file__).parent.parent
 
 NEW_FILES = [
-    "arood_qawafi.txt",
-    "irab_quran_hadith.txt",
-    "fiqh_lugha.txt",
-    "huruf_maani.txt",
+    "juzamma_tafsir.txt",
+    "nahj_selections.txt",
+    "muallaqat_study.txt",
+    "gen_sarf_tables.txt",
+    "gen_vocab_bank.txt",
 ]
 
 
