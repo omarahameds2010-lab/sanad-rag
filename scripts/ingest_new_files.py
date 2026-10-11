@@ -13,6 +13,9 @@ NEW_FILES = [
     "opensource_nazm_ajurrumiyya.txt",
     "gen_sarf_tables.txt",
     "gen_vocab_bank.txt",
+    "aalam_adab.txt",
+    "amthal_hikam.txt",
+    "duaa_quran_bank.txt",
 ]
 
 
