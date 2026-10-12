@@ -20,10 +20,12 @@ def hybrid_retrieve(
     question_text: str,
     top_k: int = 5,
     collection: str = COLLECTION_NAME,
+    query_filter=None,
+    payload_filter=None,
 ) -> list[dict]:
     client = get_client()
-    semantic_results = semantic_search(client, question_vector, top_k=top_k * 2, collection=collection)
-    keyword_results = bm25_search(question_text, top_k=top_k * 2, collection=collection)
+    semantic_results = semantic_search(client, question_vector, top_k=top_k * 2, collection=collection, query_filter=query_filter)
+    keyword_results = bm25_search(question_text, top_k=top_k * 2, collection=collection, payload_filter=payload_filter)
 
     fused_scores: dict[str, float] = {}
     payload_by_id: dict[str, dict] = {}

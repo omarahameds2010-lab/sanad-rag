@@ -20,6 +20,11 @@ TEST_API_KEY = "demo-key-123"
 
 @pytest.fixture
 def client():
+    from src.security import rate_limiter
+
+    # Rate limiting is per-process in-memory state: reset between tests so
+    # each test gets a full bucket regardless of collection order/size.
+    rate_limiter.buckets.clear()
     with TestClient(app) as c:
         # Add API key header to all requests
         c.headers.update({"X-API-Key": TEST_API_KEY})
@@ -29,6 +34,9 @@ def client():
 @pytest.fixture
 def client_no_auth():
     """Client without API key for testing auth failures."""
+    from src.security import rate_limiter
+
+    rate_limiter.buckets.clear()
     with TestClient(app) as c:
         yield c
 
@@ -99,6 +107,45 @@ def test_extractive_validates_empty_question(client):
 def test_extractive_requires_auth(client_no_auth):
     r = client_no_auth.post("/query/extractive", json={"question": "سؤال"})
     assert r.status_code == 401
+
+
+def test_extractive_branch_filter_scopes_to_science(client):
+    r = client.post("/ingest", json={
+        "source_id": "branch-nahw-doc",
+        "text": "الفاعل مرفوع دائما والمفعول منصوب.",
+        "metadata": {"branch": "nahw"},
+    })
+    assert r.status_code == 200
+    r = client.post("/ingest", json={
+        "source_id": "branch-adab-doc",
+        "text": "قال المتنبي الخيل والليل والبيداء تعرفني.",
+        "metadata": {"branch": "adab"},
+    })
+    assert r.status_code == 200
+
+    r = client.post("/query/extractive", json={"question": "المرفوع", "top_k": 5, "branch": "nahw"})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["branch"] == "nahw"
+    assert len(body["passages"]) >= 1
+    # Every returned passage carries the requested branch
+    for p in body["passages"]:
+        assert p["chunk_id"].startswith("branch-nahw-doc::")
+
+    r = client.post("/query/extractive", json={"question": "المرفوع", "top_k": 5, "branch": "no-such-branch"})
+    assert r.status_code == 200
+    assert r.json()["passages"] == []
+
+
+def test_extractive_source_ids_filter(client):
+    r = client.post("/query/extractive", json={
+        "question": "المرفوع", "top_k": 5, "source_ids": ["branch-nahw-doc"],
+    })
+    assert r.status_code == 200
+    body = r.json()
+    assert body["source_ids"] == ["branch-nahw-doc"]
+    assert len(body["passages"]) >= 1
+    assert all(p["source_id"] == "branch-nahw-doc" for p in body["passages"])
 
 
 def test_evaluate_report_404_for_unknown_run(client):

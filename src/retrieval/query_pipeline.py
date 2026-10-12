@@ -24,15 +24,30 @@ def retrieve_passages(
     reranker: Optional[Reranker] = None,
     chunker_type: str = "arabic",
     enable_query_expansion: bool = False,
+    source_ids: list[str] | None = None,
+    branch: str | None = None,
 ) -> tuple[list[dict], float]:
     """Retrieval-only half of the query path (no LLM involved).
 
     Returns (retrieved_chunks, retrieval_ms). Shared by answer_question
     and the extractive endpoint so both rank identically.
+
+    source_ids / branch scope retrieval to Explorer sub-filters; both
+    handle None as "search everything" (backward compatible).
     """
+    from src.retrieval.vector_store import build_scope_filter
+
     retrieval_start = perf_counter()
     normalized_question = normalize_for_retrieval(question)
     question_vector = embedding_model.embed([normalized_question])[0]
+    query_filter = build_scope_filter(source_ids, branch)
+
+    def payload_filter(payload: dict) -> bool:
+        if source_ids and payload.get("source_id") not in source_ids:
+            return False
+        if branch and payload.get("branch") != branch:
+            return False
+        return True
 
     # Determine collections based on chunker type
     is_hierarchical = chunker_type == "hierarchical"
@@ -45,6 +60,8 @@ def retrieve_passages(
                 embedding_model,
                 top_k=top_k * 2 if reranker else top_k,
                 reranker=reranker,
+                query_filter=query_filter,
+                payload_filter=payload_filter,
             )
         else:
             retrieved_chunks = _hierarchical_retrieve(
@@ -53,6 +70,8 @@ def retrieve_passages(
                 embedding_model,
                 top_k=top_k * 2 if reranker else top_k,
                 reranker=reranker,
+                query_filter=query_filter,
+                payload_filter=payload_filter,
             )
     else:
         # Standard retrieval (with optional query expansion)
@@ -63,12 +82,15 @@ def retrieve_passages(
                 top_k=top_k * 2 if reranker else top_k,
                 chunker_type=chunker_type,
                 reranker=reranker,
+                query_filter=query_filter,
+                payload_filter=payload_filter,
             )
         else:
             retrieve_k = top_k * 2 if reranker else top_k
             collection = collection_for_chunker(chunker_type, embedding_model.dimensions)
             retrieved_chunks = hybrid_retrieve(
-                question_vector, normalized_question, top_k=retrieve_k, collection=collection
+                question_vector, normalized_question, top_k=retrieve_k, collection=collection,
+                query_filter=query_filter, payload_filter=payload_filter,
             )
 
             # Apply reranking if provided
@@ -146,6 +168,8 @@ def _hierarchical_retrieve(
     embedding_model: EmbeddingModel,
     top_k: int = 5,
     reranker: Optional[Reranker] = None,
+    query_filter=None,
+    payload_filter=None,
 ) -> list[dict]:
     """
     Hierarchical (parent-child) retrieval:
@@ -165,9 +189,9 @@ def _hierarchical_retrieve(
     child_collection = collection_for_chunker("hierarchical_children", dims)
     
     # Semantic search on children
-    semantic_results = semantic_search(client, question_vector, top_k=top_k * 2, collection=child_collection)
+    semantic_results = semantic_search(client, question_vector, top_k=top_k * 2, collection=child_collection, query_filter=query_filter)
     # BM25 search on children
-    keyword_results = bm25_search(normalized_question, top_k=top_k * 2, collection=child_collection)
+    keyword_results = bm25_search(normalized_question, top_k=top_k * 2, collection=child_collection, payload_filter=payload_filter)
     
     # Fuse with RRF (same as hybrid_retrieve)
     fused_scores: dict[str, float] = {}
@@ -279,12 +303,14 @@ def _retrieve_with_expansion(
     top_k: int = 5,
     chunker_type: str = "arabic",
     reranker: Optional[Reranker] = None,
+    query_filter=None,
+    payload_filter=None,
 ) -> list[dict]:
     """
     Retrieve using multi-query expansion (Arabic synonyms/templates) + RRF fusion.
     """
     from src.retrieval.query_expansion import expand_and_retrieve
-    
+
     return expand_and_retrieve(
         question,
         embedding_model,
@@ -292,6 +318,8 @@ def _retrieve_with_expansion(
         chunker_type=chunker_type,
         reranker=reranker,
         max_variations=3,
+        query_filter=query_filter,
+        payload_filter=payload_filter,
     )
 
 
@@ -300,6 +328,8 @@ def _hierarchical_retrieve_with_expansion(
     embedding_model: EmbeddingModel,
     top_k: int = 5,
     reranker: Optional[Reranker] = None,
+    query_filter=None,
+    payload_filter=None,
 ) -> list[dict]:
     """
     Hierarchical retrieval with query expansion:
@@ -327,6 +357,8 @@ def _hierarchical_retrieve_with_expansion(
             embedding_model,
             top_k=top_k * 2,
             reranker=None,  # Don't rerank intermediate results
+            query_filter=query_filter,
+            payload_filter=payload_filter,
         )
         
         # Fuse across query variations

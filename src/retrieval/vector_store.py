@@ -35,6 +35,28 @@ def collection_for_chunker(chunker_type: str, dims: int | None = None) -> str:
     return f"{COLLECTION_NAME}_{chunker_type}_{dims}"
 
 
+def build_scope_filter(
+    source_ids: list[str] | None = None,
+    branch: str | None = None,
+):
+    """Build a Qdrant Filter scoping retrieval to Explorer sub-filters.
+
+    - source_ids: only chunks from these ingested sources (MatchAny).
+    - branch: only chunks tagged with this library branch (MatchValue).
+    Returns None when no scoping requested (search everything).
+    """
+    from qdrant_client.models import FieldCondition, Filter, MatchAny, MatchValue
+
+    conditions = []
+    if source_ids:
+        conditions.append(FieldCondition(key="source_id", match=MatchAny(any=source_ids)))
+    if branch:
+        conditions.append(FieldCondition(key="branch", match=MatchValue(value=branch)))
+    if not conditions:
+        return None
+    return Filter(must=conditions)
+
+
 _client_singleton: QdrantClient | None = None
 
 

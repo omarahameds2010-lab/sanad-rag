@@ -131,6 +131,13 @@ class ExtractiveRequest(BaseModel):
     )
     enable_reranking: bool = Field(default=False, description="Enable cross-encoder reranking")
     enable_query_expansion: bool = Field(default=False, description="Enable Arabic query expansion for improved recall")
+    source_ids: list[str] | None = Field(
+        default=None, max_length=50, description="Explorer sub-filter: only these ingested sources"
+    )
+    branch: str | None = Field(
+        default=None, min_length=1, max_length=40,
+        description="Explorer sub-filter: library branch (nahw/sarf/balagha/arood/adab/lugha/quran/hadith/sira/misc)",
+    )
 
 
 class ExtractivePassage(BaseModel):
@@ -147,6 +154,8 @@ class ExtractiveResponse(BaseModel):
     reranker_used: str
     chunker_type: str
     query_expansion_enabled: bool = False
+    branch: str | None = None
+    source_ids: list[str] | None = None
 
 
 class EvaluateRunRequest(BaseModel):
@@ -319,6 +328,8 @@ def query_extractive(
         reranker=reranker,
         chunker_type=request.chunker_type,
         enable_query_expansion=request.enable_query_expansion,
+        source_ids=request.source_ids,
+        branch=request.branch,
     )
     passages = []
     for chunk in retrieved_chunks:
@@ -338,6 +349,8 @@ def query_extractive(
         "reranker_used": reranker.name if reranker else "none",
         "chunker_type": request.chunker_type,
         "query_expansion_enabled": request.enable_query_expansion,
+        "branch": request.branch,
+        "source_ids": request.source_ids,
     }
 
 

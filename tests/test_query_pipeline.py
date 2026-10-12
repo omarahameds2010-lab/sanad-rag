@@ -138,3 +138,79 @@ def test_retrieve_passages_empty_index_returns_empty(isolated_qdrant):
         chunker_type="arabic",
     )
     assert chunks == []
+
+
+def test_infer_branch_taxonomy():
+    from src.ingestion.branches import infer_branch
+
+    assert infer_branch("gen_fixed_irab_v1") == "nahw"
+    assert infer_branch("gen_sarf_tables_p1_v1") == "sarf"
+    assert infer_branch("balagha_deep_v1") == "balagha"
+    assert infer_branch("arood_qawafi_v1") == "arood"
+    assert infer_branch("adab_3_v1") == "adab"
+    assert infer_branch("gen_vocab_bank_v1") == "lugha"
+    assert infer_branch("juzamma_tafsir_v1") == "quran"
+    assert infer_branch("arbaeen_nabawiyya_v1") == "hadith"
+    assert infer_branch("seera_nabaweya_v1") == "sira"
+    assert infer_branch("reach_25k_v1") == "misc"
+    assert infer_branch("") == "misc"
+
+
+def test_branch_filter_scopes_to_science(isolated_qdrant):
+    embedding_model = HashEmbedding(dims=32)
+    ingest_document(
+        source_id="sarf-book-" + str(uuid.uuid4()),
+        raw_text="تصريف الفعل الماضي والمضارع والأمر والمصدر.",
+        embedding_model=embedding_model,
+        metadata={"branch": "sarf"},
+    )
+    ingest_document(
+        source_id="adab-book-" + str(uuid.uuid4()),
+        raw_text="ديوان الشعر العربي وبحور القصائد المعلقات.",
+        embedding_model=embedding_model,
+        metadata={"branch": "adab"},
+    )
+
+    sarf_chunks, _ = retrieve_passages(
+        question="الفعل",
+        embedding_model=embedding_model,
+        top_k=5,
+        chunker_type="arabic",
+        branch="sarf",
+    )
+    assert len(sarf_chunks) >= 1
+    assert all(c.get("branch") == "sarf" for c in sarf_chunks)
+
+    unknown, _ = retrieve_passages(
+        question="الفعل",
+        embedding_model=embedding_model,
+        top_k=5,
+        chunker_type="arabic",
+        branch="no-such-branch",
+    )
+    assert unknown == []
+
+
+def test_source_ids_filter_scopes_to_documents(isolated_qdrant):
+    embedding_model = HashEmbedding(dims=32)
+    sid = "mydoc-" + str(uuid.uuid4())
+    ingest_document(
+        source_id=sid,
+        raw_text="النحو فرع من فروع اللغة العربية.",
+        embedding_model=embedding_model,
+    )
+    ingest_document(
+        source_id="other-" + str(uuid.uuid4()),
+        raw_text="البلاغة علم البيان والبديع والمعاني.",
+        embedding_model=embedding_model,
+    )
+
+    chunks, _ = retrieve_passages(
+        question="اللغة",
+        embedding_model=embedding_model,
+        top_k=5,
+        chunker_type="arabic",
+        source_ids=[sid],
+    )
+    assert len(chunks) >= 1
+    assert all(c.get("source_id") == sid for c in chunks)

@@ -183,6 +183,8 @@ def multi_query_retrieve(
     top_k: int = 5,
     chunker_type: str = "arabic",
     reranker=None,
+    query_filter=None,
+    payload_filter=None,
 ) -> list[dict]:
     """
     Run retrieval for multiple query variations and fuse results via RRF.
@@ -210,7 +212,8 @@ def multi_query_retrieve(
     
     for q_idx, query in enumerate(queries):
         query_vector = embedding_model.embed([normalize_for_retrieval(query)])[0]
-        results = hybrid_retrieve(query_vector, query, top_k=top_k * 2, collection=collection)
+        results = hybrid_retrieve(query_vector, query, top_k=top_k * 2, collection=collection,
+                                  query_filter=query_filter, payload_filter=payload_filter)
         
         # Fuse across queries using RRF with query-rank damping
         for rank, result in enumerate(results):
@@ -235,6 +238,8 @@ def expand_and_retrieve(
     chunker_type: str = "arabic",
     reranker=None,
     max_variations: int = 3,
+    query_filter=None,
+    payload_filter=None,
 ) -> list[dict]:
     """
     Expand query and run multi-query retrieval in one call.
@@ -246,4 +251,6 @@ def expand_and_retrieve(
         top_k=top_k,
         chunker_type=chunker_type,
         reranker=reranker,
+        query_filter=query_filter,
+        payload_filter=payload_filter,
     )

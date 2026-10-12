@@ -19,6 +19,7 @@ from src.chunking.arabic_chunker import chunk_text as arabic_chunk_text
 from src.chunking.baseline_chunker import chunk_text as baseline_chunk_text
 from src.chunking.hierarchical_chunker import hierarchical_chunk_text, ParentChunk, ChildChunk
 from src.embeddings.base import EmbeddingModel
+from src.ingestion.branches import infer_branch
 from src.retrieval.vector_store import (
     get_client,
     ensure_collection,
@@ -73,19 +74,24 @@ def ingest_document(
     """
     chunker = get_chunker(chunker_type)
     display_text = clean_for_display(raw_text)
-    
+
+    # Branch tagging for Explorer sub-filters: caller metadata wins,
+    # otherwise infer from source_id. Additive only — never overrides.
+    metadata = dict(metadata or {})
+    metadata.setdefault("branch", infer_branch(source_id))
+
     # Hierarchical (parent-child) chunking: create parents for LLM context,
     # children for high-precision retrieval
     if chunker_type == "hierarchical":
         return _ingest_hierarchical(
             source_id, display_text, embedding_model, metadata, chunker_type
         )
-    
+
     # Use appropriate chunker parameters based on type
     if chunker_type == "baseline":
-        chunks = chunker(display_text, max_chunk_chars=800, overlap_chars=100, metadata=metadata or {})
+        chunks = chunker(display_text, max_chunk_chars=800, overlap_chars=100, metadata=metadata)
     else:
-        chunks = chunker(display_text, max_chunk_chars=800, overlap_sentences=1, metadata=metadata or {})
+        chunks = chunker(display_text, max_chunk_chars=800, overlap_sentences=1, metadata=metadata)
 
     if not chunks:
         return {
@@ -181,6 +187,9 @@ def _ingest_hierarchical(
             "end_sentence": child.end_sentence_idx,
             "chunker_type": chunker_type,
             "chunk_level": "child",
+            # Explicit: build_child_chunks drops caller metadata, so the
+            # branch would be lost here without this line.
+            "branch": child.metadata.get("branch", metadata.get("branch", infer_branch(source_id))),
             **child.metadata,
         }
         for child in children
@@ -212,6 +221,7 @@ def _ingest_hierarchical(
             "end_sentence": parent.end_sentence_idx,
             "chunker_type": chunker_type,
             "chunk_level": "parent",
+            "branch": parent.metadata.get("branch", metadata.get("branch", infer_branch(source_id))),
             **parent.metadata,
         }
         for parent in parents

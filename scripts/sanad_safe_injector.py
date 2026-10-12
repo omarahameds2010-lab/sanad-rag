@@ -138,7 +138,8 @@ async def send_one(client, base: str, api_key: str, source_id: str,
 
 async def run(base: str, api_key: str, limit: int, concurrency: int,
               chunker_type: str, only: str | None,
-              source_dir: Path, dataset: str, prefix: str) -> int:
+              source_dir: Path, dataset: str, prefix: str,
+              branch: str | None) -> int:
     try:
         import httpx
     except ImportError:
@@ -165,6 +166,8 @@ async def run(base: str, api_key: str, limit: int, concurrency: int,
                 else:
                     source_id = f"{prefix}{fp.stem}_part{i}_v1"
                 metadata = {"dataset": dataset, "file": fp.name}
+                if branch:
+                    metadata["branch"] = branch
                 if len(parts) > 1:
                     metadata["part"] = f"{i}/{len(parts)}"
                 tasks.append(send_one(client, base, api_key, source_id,
@@ -197,6 +200,9 @@ def main() -> None:
                     help="metadata dataset label (e.g. sanad-mega)")
     ap.add_argument("--prefix", default="",
                     help="source_id prefix (e.g. real_ for mega books)")
+    ap.add_argument("--branch", default=None,
+                    help="force metadata branch for all files "
+                         "(default: infer from file name)")
     args = ap.parse_args()
 
     source_dir = Path(args.dir)
@@ -224,7 +230,8 @@ def main() -> None:
         sys.exit(2)
     code = asyncio.run(run(args.base, args.api_key, args.limit,
                            args.concurrency, args.chunker_type, args.only,
-                           source_dir, args.dataset, args.prefix))
+                           source_dir, args.dataset, args.prefix,
+                           args.branch))
     sys.exit(code)
 
 

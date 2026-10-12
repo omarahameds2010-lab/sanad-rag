@@ -43,11 +43,21 @@ def build_bm25_index(collection: str = COLLECTION_NAME) -> tuple[BM25Okapi, list
     return bm25, corpus_payloads
 
 
-def bm25_search(question: str, top_k: int = 5, collection: str = COLLECTION_NAME) -> list[dict]:
+def bm25_search(question: str, top_k: int = 5, collection: str = COLLECTION_NAME, payload_filter=None) -> list[dict]:
     index = build_bm25_index(collection)
     if index is None:
         return []
     bm25, corpus_payloads = index
+
+    if payload_filter is not None:
+        kept = [(i, p) for i, p in enumerate(corpus_payloads) if payload_filter(p)]
+        if not kept:
+            return []
+        # Rebuild the index on the in-scope corpus so ranks are computed
+        # within the Explorer sub-filter, not globally.
+        idx, scoped_payloads = zip(*kept)
+        bm25 = BM25Okapi([_tokenize(p.get("raw_text", "")) for p in scoped_payloads])
+        corpus_payloads = list(scoped_payloads)
 
     scores = bm25.get_scores(_tokenize(question))
     ranked = sorted(zip(scores, corpus_payloads), key=lambda x: x[0], reverse=True)
