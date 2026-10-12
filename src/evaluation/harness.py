@@ -57,6 +57,7 @@ def run_evaluation(
     chunker_type: str = "arabic",
     enable_reranking: bool = False,
     enable_query_expansion: bool = False,
+    fallback_llm: LLMClient | None = None,
 ) -> dict:
     """
     Runs every question in the golden dataset through the real query
@@ -92,6 +93,7 @@ def run_evaluation(
             question=example.question,
             embedding_model=embedding_model,
             primary_llm=llm,
+            fallback_llm=fallback_llm,
             top_k=top_k,
             reranker=reranker,
             chunker_type=chunker_type,

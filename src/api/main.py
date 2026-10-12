@@ -277,7 +277,7 @@ def evaluate_run(
     from src.evaluation.harness import run_evaluation
 
     embedding_model = _get_embedding_model()
-    primary_llm, _ = _get_llm_clients()
+    primary_llm, fallback_llm = _get_llm_clients()
 
     metrics = run_evaluation(
         golden_dataset_path=request.golden_dataset_path,
@@ -287,6 +287,7 @@ def evaluate_run(
         chunker_type=request.chunker_type,
         enable_reranking=request.enable_reranking,
         enable_query_expansion=request.enable_query_expansion,
+        fallback_llm=fallback_llm,
     )
     return {
         "run_id": metrics["run_id"],
