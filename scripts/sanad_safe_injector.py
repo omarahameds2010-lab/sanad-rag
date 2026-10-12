@@ -35,7 +35,7 @@ DEFAULT_LIMIT = 180000  # chars, safely under API max 200000
 DEFAULT_CONCURRENCY = 3
 
 ROOT = Path(__file__).resolve().parent.parent
-KNOWLEDGE_DIR = ROOT / "data" / "knowledge"
+DEFAULT_KNOWLEDGE_DIR = ROOT / "data" / "knowledge"
 
 
 def split_on_sentences(text: str, limit: int) -> list[str]:
@@ -84,9 +84,9 @@ def split_on_sentences(text: str, limit: int) -> list[str]:
     return [p for p in parts if p]
 
 
-def plan_files(limit: int) -> list[tuple[Path, list[str]]]:
+def plan_files(source_dir: Path, limit: int) -> list[tuple[Path, list[str]]]:
     plan = []
-    for fp in sorted(KNOWLEDGE_DIR.glob("*.txt")):
+    for fp in sorted(source_dir.glob("*.txt")):
         if fp.name.startswith("seeds_"):
             continue
         try:
@@ -137,14 +137,15 @@ async def send_one(client, base: str, api_key: str, source_id: str,
 
 
 async def run(base: str, api_key: str, limit: int, concurrency: int,
-              chunker_type: str, only: str | None) -> int:
+              chunker_type: str, only: str | None,
+              source_dir: Path, dataset: str, prefix: str) -> int:
     try:
         import httpx
     except ImportError:
         print("ERROR: httpx not installed. Run: pip install -r requirements.txt")
         return 2
 
-    plan = plan_files(limit)
+    plan = plan_files(source_dir, limit)
     if only:
         plan = [(fp, parts) for fp, parts in plan if fp.name == only]
         if not plan:
@@ -160,10 +161,10 @@ async def run(base: str, api_key: str, limit: int, concurrency: int,
             tasks = []
             for i, part in enumerate(parts, 1):
                 if len(parts) == 1:
-                    source_id = f"{fp.stem}_v1"
+                    source_id = f"{prefix}{fp.stem}_v1"
                 else:
-                    source_id = f"{fp.stem}_part{i}_v1"
-                metadata = {"dataset": "sanad-library", "file": fp.name}
+                    source_id = f"{prefix}{fp.stem}_part{i}_v1"
+                metadata = {"dataset": dataset, "file": fp.name}
                 if len(parts) > 1:
                     metadata["part"] = f"{i}/{len(parts)}"
                 tasks.append(send_one(client, base, api_key, source_id,
@@ -189,10 +190,18 @@ def main() -> None:
                     choices=["arabic", "baseline", "hierarchical"])
     ap.add_argument("--only", default=None, help="inject a single file name")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--dir", default=str(DEFAULT_KNOWLEDGE_DIR),
+                    help="source directory of .txt files "
+                         "(e.g. raw/mega_libraries for heritage books)")
+    ap.add_argument("--dataset", default="sanad-library",
+                    help="metadata dataset label (e.g. sanad-mega)")
+    ap.add_argument("--prefix", default="",
+                    help="source_id prefix (e.g. real_ for mega books)")
     args = ap.parse_args()
 
+    source_dir = Path(args.dir)
     if args.dry_run:
-        plan = plan_files(args.limit)
+        plan = plan_files(source_dir, args.limit)
         if args.only:
             plan = [(fp, p) for fp, p in plan if fp.name == args.only]
         total_parts = sum(len(p) for _, p in plan)
@@ -210,11 +219,12 @@ def main() -> None:
         print("dry-run OK: all parts under API limit.")
         return
 
-    if not KNOWLEDGE_DIR.is_dir():
-        print(f"ERROR: knowledge dir not found: {KNOWLEDGE_DIR}")
+    if not source_dir.is_dir():
+        print(f"ERROR: source dir not found: {source_dir}")
         sys.exit(2)
     code = asyncio.run(run(args.base, args.api_key, args.limit,
-                           args.concurrency, args.chunker_type, args.only))
+                           args.concurrency, args.chunker_type, args.only,
+                           source_dir, args.dataset, args.prefix))
     sys.exit(code)
 
 

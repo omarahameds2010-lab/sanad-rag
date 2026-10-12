@@ -21,3 +21,9 @@ data/sanad.db
 # the repo honest and cloneable. Uncomment to track them if needed.
 data/knowledge/gen_supreme_core_*.txt
 data/knowledge/mega_libraries/*.txt
+
+# Heritage mega-books (local only, large .txt from public-domain editions).
+# Tracked: nothing. Place verified public-domain .txt files here and inject with:
+# python scripts/sanad_safe_injector.py --dir raw/mega_libraries --dataset sanad-mega --prefix real_
+raw/mega_libraries/*.txt
+!raw/mega_libraries/.gitkeep

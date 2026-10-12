@@ -1,0 +1,2 @@
+Place verified public-domain heritage .txt books here (ignored by git).
+Inject with: python scripts/sanad_safe_injector.py --dir raw/mega_libraries --dataset sanad-mega --prefix real_
