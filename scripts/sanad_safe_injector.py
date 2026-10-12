@@ -102,7 +102,7 @@ def plan_files(limit: int) -> list[tuple[Path, list[str]]]:
     return plan
 
 
-async def send_one(session, base: str, api_key: str, source_id: str,
+async def send_one(client, base: str, api_key: str, source_id: str,
                    text: str, metadata: dict, chunker_type: str,
                    sem: asyncio.Semaphore, retries: int = 3) -> tuple[str, bool, str]:
     payload = {
@@ -120,19 +120,16 @@ async def send_one(session, base: str, api_key: str, source_id: str,
         last_status = ""
         for attempt in range(retries):
             try:
-                async with session.post(url, json=payload, headers=headers,
-                                        timeout=60) as r:
-                    body = await r.text()
-                    last_status = f"HTTP {r.status}"
-                    if 200 <= r.status < 300:
-                        return (source_id, True, last_status)
-                    if r.status in (401, 422):
-                        # Client error: retrying will not help.
-                        return (source_id, False, f"{last_status} {body[:200]}")
-                    # 429 / 5xx: retry with backoff.
-            except asyncio.TimeoutError:
-                last_status = "timeout"
-            except Exception as e:  # network errors are retryable
+                r = await client.post(url, json=payload, headers=headers,
+                                      timeout=60.0)
+                last_status = f"HTTP {r.status_code}"
+                if 200 <= r.status_code < 300:
+                    return (source_id, True, last_status)
+                if r.status_code in (401, 422):
+                    # Client error: retrying will not help.
+                    return (source_id, False, f"{last_status} {r.text[:200]}")
+                # 429 / 5xx: retry with backoff.
+            except Exception as e:  # timeouts + network errors are retryable
                 last_status = f"conn-error: {type(e).__name__}"
             if attempt < retries - 1:
                 await asyncio.sleep(2 ** attempt)
@@ -142,9 +139,9 @@ async def send_one(session, base: str, api_key: str, source_id: str,
 async def run(base: str, api_key: str, limit: int, concurrency: int,
               chunker_type: str, only: str | None) -> int:
     try:
-        import aiohttp
+        import httpx
     except ImportError:
-        print("ERROR: aiohttp not installed. Run: pip install -r requirements.txt")
+        print("ERROR: httpx not installed. Run: pip install -r requirements.txt")
         return 2
 
     plan = plan_files(limit)
@@ -156,7 +153,7 @@ async def run(base: str, api_key: str, limit: int, concurrency: int,
 
     sem = asyncio.Semaphore(concurrency)
     failures = 0
-    async with aiohttp.ClientSession() as session:
+    async with httpx.AsyncClient() as client:
         for fp, parts in plan:
             print(f"{fp.name}: {len(parts)} part(s), "
                   f"{sum(len(p) for p in parts)} chars total")
@@ -169,7 +166,7 @@ async def run(base: str, api_key: str, limit: int, concurrency: int,
                 metadata = {"dataset": "sanad-library", "file": fp.name}
                 if len(parts) > 1:
                     metadata["part"] = f"{i}/{len(parts)}"
-                tasks.append(send_one(session, base, api_key, source_id,
+                tasks.append(send_one(client, base, api_key, source_id,
                                       part, metadata, chunker_type, sem))
             for coro in asyncio.as_completed(tasks):
                 source_id, ok, status = await coro
