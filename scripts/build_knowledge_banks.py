@@ -7,7 +7,8 @@ Seeds (one entry per line, pipe-separated, hand-written and reviewable):
     seeds_fixed.txt  -> كلمة|إعراب ثابت|مثال|القاعدة
 
 Outputs (committed, ingested by SANAD):
-    data/knowledge/gen_sarf_tables.txt
+    data/knowledge/gen_sarf_tables_p1.txt
+    data/knowledge/gen_sarf_tables_p2.txt
     data/knowledge/gen_vocab_bank.txt
     data/knowledge/gen_fixed_irab.txt
 
@@ -32,22 +33,62 @@ def read_seeds(name: str) -> list[list[str]]:
     return rows
 
 
-def build_sarf() -> list[str]:
-    out = ["## بنك جداول التصريف المولد"]
+def _gen_sarf_rows(rows: list[list[str]]) -> list[str]:
+    """Generate sarf output lines from a list of seed rows."""
+    out = []
+    for row in rows:
+        if len(row) != 8:
+            continue
+        p, pr, imp, mas, af, mf, ex, typ = row
+        out.append(f"تصريف الفعل {p}: الماضي {p} والمضارع {pr} والأمر {imp}.")
+        out.append(f"مصدر الفعل {p} هو {mas}.")
+        out.append(f"اسم الفاعل من الفعل {p} هو {af} واسم المفعول هو {mf}.")
+        out.append(f"الفعل {p} فعل {typ}.")
+        out.append(f"مثال تطبيقي على الفعل {p}: {ex}.")
+        out.append(f"مثال الرفع: {pr} الطالب بجد واجتهاد.")
+        out.append(f"مثال النصب: لن {pr} المهمل أبدا.")
+        out.append(f"مثال الجزم: لم {pr} المهمل أمس.")
+    return out
+
+
+def build_sarf() -> dict[str, list[str]]:
+    """Returns sharded sarf tables: no single part may exceed the /ingest limit (200k chars).
+
+    Output files:
+        data/knowledge/gen_sarf_tables_p1.txt  (part 1)
+        data/knowledge/gen_sarf_tables_p2.txt  (part 2)
+    """
+    # Collect all valid rows from all verb seed files
+    all_rows: list[list[str]] = []
     for name in sorted(KNOWLEDGE.glob("seeds_verbs*.txt")):
         for row in read_seeds(name.name):
-            if len(row) != 8:
-                continue
-            p, pr, imp, mas, af, mf, ex, typ = row
-            out.append(f"تصريف الفعل {p}: الماضي {p} والمضارع {pr} والأمر {imp}.")
-            out.append(f"مصدر الفعل {p} هو {mas}.")
-            out.append(f"اسم الفاعل من الفعل {p} هو {af} واسم المفعول هو {mf}.")
-            out.append(f"الفعل {p} فعل {typ}.")
-            out.append(f"مثال تطبيقي على الفعل {p}: {ex}.")
-            out.append(f"مثال الرفع: {pr} الطالب بجد واجتهاد.")
-            out.append(f"مثال النصب: لن {pr} المهمل أبدا.")
-            out.append(f"مثال الجزم: لم {pr} المهمل أمس.")
-    return out
+            all_rows.append(row)
+
+    # Balance rows across two parts keeping each part < 200k chars
+    mid = len(all_rows) // 2
+    part1_rows = all_rows[:mid]
+    part2_rows = all_rows[mid:]
+
+    # Generate output lines for each part
+    part1_output = _gen_sarf_rows(part1_rows)
+    part2_output = _gen_sarf_rows(part2_rows)
+
+    # Prepend section headers
+    part1_lines = ["## بنك جداول التصريف المولد (الجزء الأول)"] + part1_output
+    part2_lines = ["## بنك جداول التصريف المولد (الجزء الثاني)"] + part2_output
+
+    # Generate output lines for each part
+    part1_output = _gen_sarf_rows(part1_rows)
+    part2_output = _gen_sarf_rows(part2_rows)
+
+    # Prepend section headers
+    part1_lines = ["## بنك جداول التصريف المولد (الجزء الأول)"] + part1_output
+    part2_lines = ["## بنك جداول التصريف المولد (الجزء الثاني)"] + part2_output
+
+    return {
+        "gen_sarf_tables_p1.txt": part1_lines,
+        "gen_sarf_tables_p2.txt": part2_lines,
+    }
 
 
 def build_vocab() -> list[str]:
@@ -77,10 +118,14 @@ def build_fixed() -> list[str]:
 
 
 def main() -> None:
+    sarf_banks = build_sarf()
+    vocab_bank = build_vocab()
+    fixed_irab = build_fixed()
+
     banks = {
-        "gen_sarf_tables.txt": build_sarf(),
-        "gen_vocab_bank.txt": build_vocab(),
-        "gen_fixed_irab.txt": build_fixed(),
+        **sarf_banks,  # gen_sarf_tables_p1.txt, gen_sarf_tables_p2.txt
+        "gen_vocab_bank.txt": vocab_bank,
+        "gen_fixed_irab.txt": fixed_irab,
     }
     total = 0
     for name, lines in banks.items():

@@ -14,3 +14,10 @@ qdrant_storage/
 data/sanad.db
 data/qdrant_local/
 data/sanad.db
+
+# Generated large knowledge shards: reproducible locally via
+# scripts/sanad_ultimate_core.py and scripts/build_knowledge_banks.py.
+# Curated small files stay tracked; generated bulk stays local to keep
+# the repo honest and cloneable. Uncomment to track them if needed.
+data/knowledge/gen_supreme_core_*.txt
+data/knowledge/mega_libraries/*.txt

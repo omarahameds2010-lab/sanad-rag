@@ -11,7 +11,8 @@ NEW_FILES = [
     "juzamma_tafsir.txt",
     "nahj_selections.txt",
     "muallaqat_study.txt",
-    "gen_sarf_tables.txt",
+    "gen_sarf_tables_p1.txt",
+    "gen_sarf_tables_p2.txt",
     "gen_vocab_bank.txt",
 ]
 
@@ -36,7 +37,7 @@ def main() -> None:
             "chunker_type": "hierarchical",
         })
         n = body.get("n_chunks") if isinstance(body, dict) else body
-        print(f"{name}: {status} chunks={n}", flush=True)
+        print(f"{name}: {status} chunks={n}".encode("ascii", "replace").decode(), flush=True)
 
 
 if __name__ == "__main__":
