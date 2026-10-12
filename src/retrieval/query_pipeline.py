@@ -17,38 +17,26 @@ from src.retrieval.vector_store import collection_for_chunker, get_client
 from src.generation.llm_client import LLMClient
 
 
-def answer_question(
+def retrieve_passages(
     question: str,
     embedding_model: EmbeddingModel,
-    primary_llm: LLMClient,
-    fallback_llm: Optional[LLMClient] = None,
     top_k: int = 5,
     reranker: Optional[Reranker] = None,
     chunker_type: str = "arabic",
     enable_query_expansion: bool = False,
-) -> dict:
-    """
-    Returns a dict matching the /query response contract in
-    docs/architecture.md §4: {answer, cited_chunk_ids, retrieval_ms,
-    generation_ms}.
-    
-    Args:
-        question: user's question
-        embedding_model: embedding model to use
-        primary_llm: primary LLM for generation
-        fallback_llm: fallback LLM if primary fails
-        top_k: number of chunks to retrieve
-        reranker: optional reranker to re-rank retrieved chunks
-        chunker_type: chunking strategy used at ingestion time
-        enable_query_expansion: whether to expand the query with Arabic synonyms/variations
+) -> tuple[list[dict], float]:
+    """Retrieval-only half of the query path (no LLM involved).
+
+    Returns (retrieved_chunks, retrieval_ms). Shared by answer_question
+    and the extractive endpoint so both rank identically.
     """
     retrieval_start = perf_counter()
     normalized_question = normalize_for_retrieval(question)
     question_vector = embedding_model.embed([normalized_question])[0]
-    
+
     # Determine collections based on chunker type
     is_hierarchical = chunker_type == "hierarchical"
-    
+
     if is_hierarchical:
         # For hierarchical: retrieve from children collection, then map to parents
         if enable_query_expansion:
@@ -82,12 +70,48 @@ def answer_question(
             retrieved_chunks = hybrid_retrieve(
                 question_vector, normalized_question, top_k=retrieve_k, collection=collection
             )
-            
+
             # Apply reranking if provided
             if reranker:
                 retrieved_chunks = reranker.rerank(normalized_question, retrieved_chunks, top_k=top_k)
-    
+
     retrieval_ms = (perf_counter() - retrieval_start) * 1000
+    return retrieved_chunks, retrieval_ms
+
+
+def answer_question(
+    question: str,
+    embedding_model: EmbeddingModel,
+    primary_llm: LLMClient,
+    fallback_llm: Optional[LLMClient] = None,
+    top_k: int = 5,
+    reranker: Optional[Reranker] = None,
+    chunker_type: str = "arabic",
+    enable_query_expansion: bool = False,
+) -> dict:
+    """
+    Returns a dict matching the /query response contract in
+    docs/architecture.md §4: {answer, cited_chunk_ids, retrieval_ms,
+    generation_ms}.
+    
+    Args:
+        question: user's question
+        embedding_model: embedding model to use
+        primary_llm: primary LLM for generation
+        fallback_llm: fallback LLM if primary fails
+        top_k: number of chunks to retrieve
+        reranker: optional reranker to re-rank retrieved chunks
+        chunker_type: chunking strategy used at ingestion time
+        enable_query_expansion: whether to expand the query with Arabic synonyms/variations
+    """
+    retrieved_chunks, retrieval_ms = retrieve_passages(
+        question=question,
+        embedding_model=embedding_model,
+        top_k=top_k,
+        reranker=reranker,
+        chunker_type=chunker_type,
+        enable_query_expansion=enable_query_expansion,
+    )
 
     generation_start = perf_counter()
     try:

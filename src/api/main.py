@@ -123,6 +123,32 @@ class QueryResponse(BaseModel):
     query_expansion_enabled: bool = False
 
 
+class ExtractiveRequest(BaseModel):
+    question: str = Field(..., min_length=1, max_length=2_000)
+    top_k: int = Field(default=5, ge=1, le=20)
+    chunker_type: Literal["arabic", "baseline", "hierarchical"] = Field(
+        default="arabic", description="Which chunker's collection to query"
+    )
+    enable_reranking: bool = Field(default=False, description="Enable cross-encoder reranking")
+    enable_query_expansion: bool = Field(default=False, description="Enable Arabic query expansion for improved recall")
+
+
+class ExtractivePassage(BaseModel):
+    chunk_id: str
+    source_id: str
+    text: str
+    score: float
+
+
+class ExtractiveResponse(BaseModel):
+    passages: list[ExtractivePassage]
+    cited_chunk_ids: list[str]
+    retrieval_ms: float
+    reranker_used: str
+    chunker_type: str
+    query_expansion_enabled: bool = False
+
+
 class EvaluateRunRequest(BaseModel):
     golden_dataset_path: str
     config_name: str = Field(default="baseline")
@@ -155,8 +181,9 @@ async def validate_input_middleware(request: Request, call_next):
     """
     # Only validate POST bodies for our API endpoints
     if request.method == "POST" and request.url.path in [
-        "/ingest", 
-        "/query", 
+        "/ingest",
+        "/query",
+        "/query/extractive",
         "/evaluate/run",
         "/evaluate/submission",
     ]:
@@ -261,6 +288,56 @@ def query(
         "generation_ms": result["generation_ms"],
         "reranker_used": result["reranker_used"],
         "query_expansion_enabled": result.get("query_expansion_enabled", False),
+    }
+
+
+@app.post("/query/extractive", response_model=ExtractiveResponse)
+def query_extractive(
+    request: ExtractiveRequest,
+    api_key: str = Depends(verify_api_key),  # API key auth
+):
+    """
+    Pure extractive retrieval: same hybrid ranking as /query
+    (src/retrieval/query_pipeline.retrieve_passages) but NO LLM call.
+    Returns the library passages verbatim with their chunk IDs, so the
+    answer is always grounded in ingested sources and arrives in
+    milliseconds. Citations equal retrieved IDs by construction.
+    """
+    from src.retrieval.query_pipeline import retrieve_passages
+    from src.retrieval.reranker import CrossEncoderReranker
+
+    # Sanitize input
+    clean_question = sanitize_input(request.question, max_length=2_000)
+
+    embedding_model = _get_embedding_model()
+
+    reranker = CrossEncoderReranker() if request.enable_reranking else None
+    retrieved_chunks, retrieval_ms = retrieve_passages(
+        question=clean_question,
+        embedding_model=embedding_model,
+        top_k=request.top_k,
+        reranker=reranker,
+        chunker_type=request.chunker_type,
+        enable_query_expansion=request.enable_query_expansion,
+    )
+    passages = []
+    for chunk in retrieved_chunks:
+        score = chunk.get("rerank_score", chunk.get("fused_score", chunk.get("score", 0.0)))
+        passages.append(
+            {
+                "chunk_id": chunk["chunk_id"],
+                "source_id": chunk.get("source_id", ""),
+                "text": chunk.get("raw_text", chunk.get("text", "")),
+                "score": float(score),
+            }
+        )
+    return {
+        "passages": passages,
+        "cited_chunk_ids": [p["chunk_id"] for p in passages],
+        "retrieval_ms": round(retrieval_ms, 2),
+        "reranker_used": reranker.name if reranker else "none",
+        "chunker_type": request.chunker_type,
+        "query_expansion_enabled": request.enable_query_expansion,
     }
 
 

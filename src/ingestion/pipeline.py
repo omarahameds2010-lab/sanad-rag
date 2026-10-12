@@ -25,7 +25,11 @@ from src.retrieval.vector_store import (
     upsert_chunks,
     collection_for_chunker,
 )
-from src.evaluation.storage import record_ingested_document
+# NOTE: record_ingested_document is imported lazily inside functions
+# (not at module top) to avoid a circular import: this module is imported
+# by src.evaluation.harness, which is re-exported from src.evaluation/__init__,
+# so a top-level "from src.evaluation.storage import ..." here would fail
+# depending on import order (ImportError: partially initialized module).
 
 
 def get_chunker(chunker_type: str = "arabic") -> Callable:
@@ -114,6 +118,8 @@ def ingest_document(
     collection = collection_for_chunker(chunker_type, embedding_model.dimensions)
     ensure_collection(client, dims=embedding_model.dimensions, collection=collection)
     upsert_chunks(client, chunk_ids, vectors, payloads, collection=collection)
+
+    from src.evaluation.storage import record_ingested_document
 
     record_ingested_document(
         source_id=source_id, n_chunks=len(chunks), embedding_model=embedding_model.name
@@ -214,6 +220,8 @@ def _ingest_hierarchical(
     parent_collection = collection_for_chunker(f"{chunker_type}_parents", embedding_model.dimensions)
     ensure_collection(client, dims=embedding_model.dimensions, collection=parent_collection)
     upsert_chunks(client, parent_ids, parent_vectors, parent_payloads, collection=parent_collection)
+
+    from src.evaluation.storage import record_ingested_document
 
     record_ingested_document(
         source_id=source_id, n_chunks=len(children), embedding_model=embedding_model.name

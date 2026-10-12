@@ -8,7 +8,7 @@ import pytest
 
 from src.embeddings.base import HashEmbedding
 from src.ingestion.pipeline import ingest_document
-from src.retrieval.query_pipeline import answer_question
+from src.retrieval.query_pipeline import answer_question, retrieve_passages
 from src.generation.llm_client import FakeLLM
 
 
@@ -92,3 +92,49 @@ def test_primary_llm_failure_falls_back(isolated_qdrant):
     )
     assert "fallback" in result["model_used"]
     assert result["answer"]  # fallback still produced an answer, no crash
+
+
+def test_retrieve_passages_matches_answer_question_ranking(isolated_qdrant):
+    """The extractive path must rank identically to the grounded path:
+    same chunks, same order, no LLM involved."""
+    embedding_model = HashEmbedding(dims=32)
+    ingest_document(
+        source_id="doc-" + str(uuid.uuid4()),
+        raw_text="القاهرة هي عاصمة مصر. النيل هو أطول نهر في أفريقيا. الأزهر منارة العلم.",
+        embedding_model=embedding_model,
+    )
+
+    chunks, retrieval_ms = retrieve_passages(
+        question="ما هي عاصمة مصر؟",
+        embedding_model=embedding_model,
+        top_k=3,
+        chunker_type="arabic",
+    )
+    grounded = answer_question(
+        question="ما هي عاصمة مصر؟",
+        embedding_model=embedding_model,
+        primary_llm=FakeLLM(),
+        top_k=3,
+        chunker_type="arabic",
+    )
+
+    assert len(chunks) >= 1
+    assert retrieval_ms >= 0
+    assert [c["chunk_id"] for c in chunks] == grounded["retrieved_chunk_ids"]
+    # FakeLLM cites the top retrieved chunk: extractive top == grounded citation
+    assert chunks[0]["chunk_id"] in grounded["cited_chunk_ids"]
+
+
+def test_retrieve_passages_empty_index_returns_empty(isolated_qdrant):
+    embedding_model = HashEmbedding(dims=32)
+    from src.retrieval.vector_store import get_client, ensure_collection, collection_for_chunker
+
+    ensure_collection(
+        get_client(), dims=embedding_model.dimensions, collection=collection_for_chunker("arabic", embedding_model.dimensions)
+    )
+    chunks, _ = retrieve_passages(
+        question="سؤال بلا بيانات",
+        embedding_model=embedding_model,
+        chunker_type="arabic",
+    )
+    assert chunks == []

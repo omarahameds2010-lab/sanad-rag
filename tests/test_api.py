@@ -76,6 +76,31 @@ def test_query_requires_auth(client_no_auth):
     assert r.status_code == 401
 
 
+def test_extractive_returns_passages_without_llm(client):
+    # Ingest first so the extractive query has something to find.
+    r = client.post("/ingest", json={"source_id": "ext-doc1", "text": "النيل أطول نهر في أفريقيا. القاهرة عاصمة مصر."})
+    assert r.status_code == 200
+
+    r = client.post("/query/extractive", json={"question": "ما هو أطول نهر؟", "top_k": 2})
+    assert r.status_code == 200
+    body = r.json()
+    assert len(body["passages"]) >= 1
+    assert body["cited_chunk_ids"] == [p["chunk_id"] for p in body["passages"]]
+    assert all(p["text"] for p in body["passages"])
+    assert "generation_ms" not in body
+    assert body["retrieval_ms"] >= 0
+
+
+def test_extractive_validates_empty_question(client):
+    r = client.post("/query/extractive", json={"question": ""})
+    assert r.status_code == 422
+
+
+def test_extractive_requires_auth(client_no_auth):
+    r = client_no_auth.post("/query/extractive", json={"question": "سؤال"})
+    assert r.status_code == 401
+
+
 def test_evaluate_report_404_for_unknown_run(client):
     r = client.get("/evaluate/report", params={"run_id": "does-not-exist"})
     assert r.status_code == 404
