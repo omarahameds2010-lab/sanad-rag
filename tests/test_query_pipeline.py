@@ -214,3 +214,39 @@ def test_source_ids_filter_scopes_to_documents(isolated_qdrant):
     )
     assert len(chunks) >= 1
     assert all(c.get("source_id") == sid for c in chunks)
+
+
+def test_prune_removes_source_points_and_records(isolated_qdrant, tmp_path):
+    from src.retrieval.vector_store import delete_by_sources, get_client, collection_for_chunker
+    from src.evaluation.storage import (
+        delete_ingested_document,
+        record_ingested_document,
+        get_connection,
+    )
+
+    embedding_model = HashEmbedding(dims=32)
+    sid = "filler-" + str(uuid.uuid4())
+    ingest_document(source_id=sid, raw_text="حشو مكرر حشو مكرر.", embedding_model=embedding_model)
+
+    client = get_client()
+    collection = collection_for_chunker("arabic", embedding_model.dimensions)
+    before, _ = client.scroll(collection_name=collection, limit=100, with_payload=False)
+    assert any(True for _ in before)
+
+    deleted = delete_by_sources([sid])
+    assert deleted.get(collection, 0) >= 1
+    from qdrant_client.models import FieldCondition, Filter, MatchAny
+    pts, _ = client.scroll(
+        collection_name=collection,
+        scroll_filter=Filter(must=[FieldCondition(key="source_id", match=MatchAny(any=[sid]))]),
+        limit=100,
+        with_payload=False,
+    )
+    assert pts == []
+
+    db = tmp_path / "t.db"
+    record_ingested_document(sid, 1, "x", db_path=db)
+    delete_ingested_document(sid, db_path=db)
+    with get_connection(db) as conn:
+        rows = conn.execute("SELECT * FROM ingested_documents WHERE source_id = ?", (sid,)).fetchall()
+    assert rows == []

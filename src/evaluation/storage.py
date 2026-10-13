@@ -80,6 +80,13 @@ def record_ingested_document(
         )
 
 
+def delete_ingested_document(source_id: str, db_path: Path = DEFAULT_DB_PATH) -> None:
+    """Remove bookkeeping rows when a source is quarantined from the index."""
+    with get_connection(db_path) as conn:
+        conn.execute("DELETE FROM chunks WHERE source_id = ?", (source_id,))
+        conn.execute("DELETE FROM ingested_documents WHERE source_id = ?", (source_id,))
+
+
 def record_evaluation_run(
     run_id: str,
     config_name: str,

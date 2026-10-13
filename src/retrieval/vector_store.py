@@ -135,3 +135,38 @@ def _stable_point_id(chunk_id: str) -> str:
     UUID from our own chunk_id string so re-ingesting the same chunk
     upserts instead of duplicating."""
     return str(uuid.uuid5(uuid.NAMESPACE_URL, chunk_id))
+
+
+def delete_by_sources(
+    source_ids: list[str],
+    collections: list[str] | None = None,
+) -> dict[str, int]:
+    """Delete all points of the given sources (filler quarantine).
+
+    Returns {collection_name: deleted_point_count}. Counts are measured
+    by a pre-delete scroll so the operation is auditable.
+    """
+    from qdrant_client.models import FieldCondition, Filter, MatchAny
+
+    client = get_client()
+    if collections is None:
+        collections = [
+            c.name for c in client.get_collections().collections
+            if c.name == COLLECTION_NAME or c.name.startswith(COLLECTION_NAME + "_")
+        ]
+    selector = Filter(
+        must=[FieldCondition(key="source_id", match=MatchAny(any=source_ids))]
+    )
+    deleted: dict[str, int] = {}
+    for collection in collections:
+        points, _ = client.scroll(
+            collection_name=collection,
+            scroll_filter=selector,
+            limit=100_000,
+            with_payload=False,
+        )
+        n = len(points)
+        if n:
+            client.delete(collection_name=collection, points_selector=selector)
+        deleted[collection] = n
+    return deleted
