@@ -110,12 +110,14 @@ def answer_question(
     reranker: Optional[Reranker] = None,
     chunker_type: str = "arabic",
     enable_query_expansion: bool = False,
+    source_ids: list[str] | None = None,
+    branch: str | None = None,
 ) -> dict:
     """
     Returns a dict matching the /query response contract in
     docs/architecture.md §4: {answer, cited_chunk_ids, retrieval_ms,
     generation_ms}.
-    
+
     Args:
         question: user's question
         embedding_model: embedding model to use
@@ -125,6 +127,8 @@ def answer_question(
         reranker: optional reranker to re-rank retrieved chunks
         chunker_type: chunking strategy used at ingestion time
         enable_query_expansion: whether to expand the query with Arabic synonyms/variations
+        source_ids: optional Explorer sub-filter (only these sources)
+        branch: optional Explorer sub-filter (library branch)
     """
     retrieved_chunks, retrieval_ms = retrieve_passages(
         question=question,
@@ -133,6 +137,8 @@ def answer_question(
         reranker=reranker,
         chunker_type=chunker_type,
         enable_query_expansion=enable_query_expansion,
+        source_ids=source_ids,
+        branch=branch,
     )
 
     generation_start = perf_counter()

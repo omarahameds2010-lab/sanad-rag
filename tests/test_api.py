@@ -128,9 +128,10 @@ def test_extractive_branch_filter_scopes_to_science(client):
     body = r.json()
     assert body["branch"] == "nahw"
     assert len(body["passages"]) >= 1
-    # Every returned passage carries the requested branch
+    # Every returned passage carries the requested branch (the shared
+    # index also holds gen_fixed_irab_v1, which is branch nahw too).
     for p in body["passages"]:
-        assert p["chunk_id"].startswith("branch-nahw-doc::")
+        assert p["branch"] == "nahw"
 
     r = client.post("/query/extractive", json={"question": "المرفوع", "top_k": 5, "branch": "no-such-branch"})
     assert r.status_code == 200
@@ -146,6 +147,14 @@ def test_extractive_source_ids_filter(client):
     assert body["source_ids"] == ["branch-nahw-doc"]
     assert len(body["passages"]) >= 1
     assert all(p["source_id"] == "branch-nahw-doc" for p in body["passages"])
+
+
+def test_grounded_query_accepts_branch_filter(client):
+    r = client.post("/query", json={"question": "المرفوع", "top_k": 2, "branch": "nahw"})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["branch"] == "nahw"
+    assert "answer" in body and "retrieval_ms" in body
 
 
 def test_evaluate_report_404_for_unknown_run(client):

@@ -112,6 +112,13 @@ class QueryRequest(BaseModel):
         default="arabic", description="Which chunker's collection to query"
     )
     enable_query_expansion: bool = Field(default=False, description="Enable Arabic query expansion for improved recall")
+    source_ids: list[str] | None = Field(
+        default=None, max_length=50, description="Explorer sub-filter: only these ingested sources"
+    )
+    branch: str | None = Field(
+        default=None, min_length=1, max_length=40,
+        description="Explorer sub-filter: library branch (nahw/sarf/balagha/arood/adab/lugha/quran/hadith/sira/misc)",
+    )
 
 
 class QueryResponse(BaseModel):
@@ -121,6 +128,8 @@ class QueryResponse(BaseModel):
     generation_ms: float
     reranker_used: str
     query_expansion_enabled: bool = False
+    branch: str | None = None
+    source_ids: list[str] | None = None
 
 
 class ExtractiveRequest(BaseModel):
@@ -143,6 +152,7 @@ class ExtractiveRequest(BaseModel):
 class ExtractivePassage(BaseModel):
     chunk_id: str
     source_id: str
+    branch: str = "misc"
     text: str
     score: float
 
@@ -289,6 +299,8 @@ def query(
         reranker=reranker,
         chunker_type=request.chunker_type,
         enable_query_expansion=request.enable_query_expansion,
+        source_ids=request.source_ids,
+        branch=request.branch,
     )
     return {
         "answer": result["answer"],
@@ -297,6 +309,8 @@ def query(
         "generation_ms": result["generation_ms"],
         "reranker_used": result["reranker_used"],
         "query_expansion_enabled": result.get("query_expansion_enabled", False),
+        "branch": request.branch,
+        "source_ids": request.source_ids,
     }
 
 
@@ -338,6 +352,7 @@ def query_extractive(
             {
                 "chunk_id": chunk["chunk_id"],
                 "source_id": chunk.get("source_id", ""),
+                "branch": chunk.get("branch", "misc"),
                 "text": chunk.get("raw_text", chunk.get("text", "")),
                 "score": float(score),
             }
