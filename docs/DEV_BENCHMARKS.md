@@ -85,3 +85,26 @@ live data. 266 filler points were quarantined and deleted (commit
    `POST /evaluate/run` on `data/golden_dataset/sanad_library_golden.json`.
 4. Append the resulting row to `docs/benchmark_results.md` — that file,
    not this one, is the production record.
+
+## 6. LMS integration verification (sanad-edtech, 2026-10-16)
+
+Cross-repo proof that the Learning Platform actually consumes the
+contracts above. SANAD commits: extractive endpoint (`a9f948c`),
+branch filters (`117a508`, `7a002ee`), grading fallback (`456c988`),
+forced review (`3ca918a`). LMS commits: `78b9d69` (SanadClient +
+evaluate wiring + prisma secret fix), `3e4340d` (scope map, ask-sanad
+proxy, AI grading panel).
+
+| Check | Result |
+|---|---|
+| LMS api suite (`apps/api`, jest) | 187/187 passing (19 suites) |
+| LMS api production build (`nest build` via pre-commit) | green, DI graph valid |
+| LMS web suite (vitest) + `tsc --noEmit` | 51/51 passing, clean |
+| Live `POST /query/extractive` + `branch`/`source_ids` filters | HTTP 200, scoped correctly |
+| Live `POST /evaluate/submission` (2-criteria rubric) | `COMPLETED`, criteria scored, `needs_teacher_review` honored |
+| Contract lessons (both enforced live) | `request_id`/`submission_id`/`question_id` must be UUIDs (else 422); rubric sum must equal `max_score` (else 422) |
+
+Blocked live E2E (not a code gap): the LMS api needs its Railway
+`DATABASE_URL`, which is truncated in the local `.env` — booting `:3002`
+and running teacher evaluate → review → official grade waits on a
+complete connection string pasted locally by the owner.
