@@ -67,3 +67,66 @@ def test_recall_is_perfect_when_corpus_is_small_and_topk_generous(isolated_env):
         top_k=5,
     )
     assert metrics["recall_at_k"] == 1.0
+
+
+def test_stored_run_keeps_experimental_axes(isolated_env):
+    """Comparisons must be reproducible from the DB, not just Markdown:
+    embedding/llm/chunker/reranker/expansion/dev-flag survive the roundtrip."""
+    from src.evaluation.storage import record_evaluation_run
+
+    run_id = "axes-probe"
+    record_evaluation_run(
+        run_id=run_id,
+        config_name="axes",
+        metrics={
+            "n_examples": 4,
+            "precision_at_k": 0.5,
+            "recall_at_k": 0.75,
+            "p50_latency_seconds": 0.01,
+            "p95_latency_seconds": 0.02,
+            "embedding_model": "hash-embedding-DEV-ONLY",
+            "llm_model": "fake-llm-DEV-ONLY",
+            "chunker_type": "arabic",
+            "reranker_used": "BAAI/bge-reranker-base",
+            "query_expansion_enabled": True,
+            "is_dev_only_run": True,
+        },
+    )
+    stored = get_evaluation_run(run_id)
+    assert stored["embedding_model"] == "hash-embedding-DEV-ONLY"
+    assert stored["llm_model"] == "fake-llm-DEV-ONLY"
+    assert stored["chunker_type"] == "arabic"
+    assert stored["reranker_used"] == "BAAI/bge-reranker-base"
+    assert stored["query_expansion_enabled"] == 1
+    assert stored["is_dev_only_run"] == 1
+
+
+def test_legacy_db_without_axes_still_records(tmp_path):
+    """Migration: databases created before the axes existed gain the
+    columns on first connect instead of crashing the INSERT."""
+    import sqlite3
+
+    from src.evaluation import storage
+
+    db = tmp_path / "legacy.db"
+    conn = sqlite3.connect(db)
+    conn.execute(
+        """CREATE TABLE evaluation_runs (
+            run_id TEXT PRIMARY KEY, config_name TEXT, started_at TIMESTAMP,
+            n_examples INTEGER, precision_at_k REAL, recall_at_k REAL,
+            p50_latency_seconds REAL, p95_latency_seconds REAL)"""
+    )
+    conn.execute(
+        "INSERT INTO evaluation_runs (run_id, config_name) VALUES ('old', 'baseline')"
+    )
+    conn.commit()
+    conn.close()
+
+    storage.record_evaluation_run(
+        run_id="new", config_name="x", metrics={"n_examples": 1},
+        db_path=db,
+    )
+    stored = storage.get_evaluation_run("new", db_path=db)
+    assert stored is not None
+    assert stored["reranker_used"] is None  # absent axes read back as NULL
+    assert storage.get_evaluation_run("old", db_path=db)["config_name"] == "baseline"

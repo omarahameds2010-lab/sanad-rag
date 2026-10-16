@@ -37,9 +37,33 @@ CREATE TABLE IF NOT EXISTS evaluation_runs (
     precision_at_k REAL,
     recall_at_k REAL,
     p50_latency_seconds REAL,
-    p95_latency_seconds REAL
+    p95_latency_seconds REAL,
+    embedding_model TEXT,
+    llm_model TEXT,
+    chunker_type TEXT,
+    reranker_used TEXT,
+    query_expansion_enabled INTEGER,
+    is_dev_only_run INTEGER
 );
 """
+
+# Experimental axes added after the table already existed in the wild.
+# SQLite has no ADD COLUMN IF NOT EXISTS, so migrate by inspection.
+EVALUATION_RUN_AXES = (
+    ("embedding_model", "TEXT"),
+    ("llm_model", "TEXT"),
+    ("chunker_type", "TEXT"),
+    ("reranker_used", "TEXT"),
+    ("query_expansion_enabled", "INTEGER"),
+    ("is_dev_only_run", "INTEGER"),
+)
+
+
+def _ensure_evaluation_columns(conn) -> None:
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(evaluation_runs)")}
+    for name, coltype in EVALUATION_RUN_AXES:
+        if name not in existing:
+            conn.execute(f"ALTER TABLE evaluation_runs ADD COLUMN {name} {coltype}")
 
 
 @contextmanager
@@ -57,6 +81,7 @@ def get_connection(db_path: Path = DEFAULT_DB_PATH):
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     conn.executescript(SCHEMA)
+    _ensure_evaluation_columns(conn)
     try:
         yield conn
         conn.commit()
@@ -87,6 +112,13 @@ def delete_ingested_document(source_id: str, db_path: Path = DEFAULT_DB_PATH) ->
         conn.execute("DELETE FROM ingested_documents WHERE source_id = ?", (source_id,))
 
 
+def _as_int(value) -> int | None:
+    """SQLite has no BOOLEAN: persist flags as 0/1, keep missing as NULL."""
+    if value is None:
+        return None
+    return 1 if bool(value) else 0
+
+
 def record_evaluation_run(
     run_id: str,
     config_name: str,
@@ -99,8 +131,10 @@ def record_evaluation_run(
         conn.execute(
             """INSERT OR REPLACE INTO evaluation_runs
                (run_id, config_name, started_at, n_examples, precision_at_k,
-                recall_at_k, p50_latency_seconds, p95_latency_seconds)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                recall_at_k, p50_latency_seconds, p95_latency_seconds,
+                embedding_model, llm_model, chunker_type, reranker_used,
+                query_expansion_enabled, is_dev_only_run)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 run_id,
                 config_name,
@@ -110,6 +144,12 @@ def record_evaluation_run(
                 metrics.get("recall_at_k"),
                 metrics.get("p50_latency_seconds"),
                 metrics.get("p95_latency_seconds"),
+                metrics.get("embedding_model"),
+                metrics.get("llm_model"),
+                metrics.get("chunker_type"),
+                metrics.get("reranker_used"),
+                _as_int(metrics.get("query_expansion_enabled")),
+                _as_int(metrics.get("is_dev_only_run")),
             ),
         )
 

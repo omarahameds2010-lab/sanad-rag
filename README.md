@@ -2,7 +2,7 @@
 
 > **سند**: الأساس اللي بترتكز عليه — بالظبط زي ما المشروع ده بيبني أساس retrieval سليم للمحتوى العربي قبل ما نديه لأي LLM.
 
-**Status:** Phase 11a complete — extractive retrieval, branch sub-filters, LMS integration surface, and filler quarantine live and tested (84 tests passing); real benchmark numbers pending a run with network/model access (see `docs/DEV_BENCHMARKS.md` for honest dev-only numbers)
+**Status:** Phase 11a complete — extractive retrieval, branch sub-filters, LMS integration surface, and filler quarantine live and tested (86 tests passing); real benchmark numbers pending a run with network/model access (see `docs/DEV_BENCHMARKS.md` for honest dev-only numbers)
 [![Tests](https://github.com/omarahameds2010-lab/sanad-rag/actions/workflows/tests.yml/badge.svg)](https://github.com/omarahameds2010-lab/sanad-rag/actions/workflows/tests.yml)
 **Author:** Omar Ahmed ([GitHub](https://github.com/omarahameds2010-lab) · [LinkedIn](https://linkedin.com/in/omar-ahmed-7b97613b1))
 
