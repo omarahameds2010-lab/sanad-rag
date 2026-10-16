@@ -16,7 +16,7 @@ with `FakeLLM` fallback (fallback wired into `/evaluate/run` by commit
 Qdrant embedded (`data/qdrant_local`), `bge-m3` unavailable on this host
 (scipy DLL blocked by Application Control policy).
 
-## 1. Test suite: 84/84 passing (~234s)
+## 1. Test suite: 86/86 passing
 
 | File | Tests | Covers |
 |---|---|---|
@@ -28,9 +28,13 @@ Qdrant embedded (`data/qdrant_local`), `bge-m3` unavailable on this host
 | `test_phase8_integration.py` | 6 | hierarchical + rerank + expansion |
 | `test_chunking.py` | 4 | Arabic sentence splitting, diacritics normalization |
 | `test_ingestion_pipeline.py` | 3 | ingest → store → retrieve |
-| `test_evaluation_harness.py` | 3 | batch metrics, persistence, recall tripwire |
+| `test_evaluation_harness.py` | 5 | batch metrics, persistence, recall tripwire, axes roundtrip, legacy migration |
 | `test_runtime_validation.py` | 2 | forced teacher review on invalid grades |
-| **Total** | **84** | **0 failures** |
+| **Total** | **86** | **0 failures** |
+
+Experimental axes (`embedding/llm/chunker/reranker/expansion/dev-flag`)
+are now persisted per run — comparisons are DB-reproducible;
+pre-existing rows read back with NULL axes.
 
 Command: `$env:EMBEDDING_MODEL='hash-dev'; pytest tests/ -q`
 (API server must be stopped first: embedded Qdrant takes an exclusive
