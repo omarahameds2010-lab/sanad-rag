@@ -16,7 +16,7 @@ with `FakeLLM` fallback (fallback wired into `/evaluate/run` by commit
 Qdrant embedded (`data/qdrant_local`), `bge-m3` unavailable on this host
 (scipy DLL blocked by Application Control policy).
 
-## 1. Test suite: 82/82 passing (~185s)
+## 1. Test suite: 84/84 passing (~234s)
 
 | File | Tests | Covers |
 |---|---|---|
@@ -29,7 +29,8 @@ Qdrant embedded (`data/qdrant_local`), `bge-m3` unavailable on this host
 | `test_chunking.py` | 4 | Arabic sentence splitting, diacritics normalization |
 | `test_ingestion_pipeline.py` | 3 | ingest → store → retrieve |
 | `test_evaluation_harness.py` | 3 | batch metrics, persistence, recall tripwire |
-| **Total** | **82** | **0 failures** |
+| `test_runtime_validation.py` | 2 | forced teacher review on invalid grades |
+| **Total** | **84** | **0 failures** |
 
 Command: `$env:EMBEDDING_MODEL='hash-dev'; pytest tests/ -q`
 (API server must be stopped first: embedded Qdrant takes an exclusive
@@ -49,6 +50,7 @@ deliberately excluded from the golden set.
 | `d740fec8` | library-v2 | 10 | 0.140 | 0.700 | 1.86 | 8.00 |
 | `42ed6da4` | library-v3 | 12 | 0.150 | 0.750 | 0.57 | 12.82 |
 | `736268c2` | library-v4 | 14 | 0.143 | 0.714 | 3.90 | 14.73 |
+| `8257350b` | library-v5 | 16 | 0.150 | 0.750 | 12.91 | 152.17 |
 
 Reading: recall climbs as genuine banks are added (0.625 → 0.75);
 precision stays ~0.13–0.15, the expected ceiling of trigram-hash
