@@ -435,18 +435,24 @@ class RuntimeEvaluator:
         )
         
         validation = validate_evaluation(result, grading)
+        needs_teacher_review = result.needs_teacher_review
+        feedback_ar = result.feedback_ar
         if not validation.valid:
-            # If validation fails, we still return the result but mark for review
-            pass  # In production, might want to retry or use fallback
-        
+            # A grade missing criteria or breaking rubric arithmetic must
+            # never look complete: force teacher review and surface why.
+            needs_teacher_review = True
+            reasons = "; ".join(str(e) for e in validation.errors)
+            audit_note = f"[تدقيق تلقائي: الدرجة مخالفة للمعايير — {reasons}]"
+            feedback_ar = f"{feedback_ar}\n{audit_note}".strip() if feedback_ar else audit_note
+
         return EvaluationResult(
             evaluation_id="",
             request_id="",
             suggested_score=result.suggested_score,
             max_score=result.max_score,
             criteria=result.criteria,
-            feedback_ar=result.feedback_ar,
+            feedback_ar=feedback_ar,
             review_signal=result.review_signal,
-            needs_teacher_review=result.needs_teacher_review,
+            needs_teacher_review=needs_teacher_review,
             knowledge_gaps=result.knowledge_gaps,
         )
