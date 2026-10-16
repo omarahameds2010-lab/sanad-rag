@@ -52,6 +52,28 @@ deliberately excluded from the golden set.
 | `736268c2` | library-v4 | 14 | 0.143 | 0.714 | 3.90 | 14.73 |
 | `8257350b` | library-v5 | 16 | 0.150 | 0.750 | 12.91 | 152.17 |
 
+## 2b. Phase 7 arm comparison (same golden v5, hash-dev)
+
+First measured before/after of the optimization arms. Relative deltas
+are meaningful even on dev embeddings; absolute values are not.
+
+| run_id (short) | config | rerank | expansion | Precision@5 | Recall@5 |
+|---|---|---|---|---|---|
+| `8257350b` | library-v5 (baseline) | off | off | 0.150 | 0.750 |
+| `fb791a1e` | library-exp | off | on | 0.138 | 0.688 |
+| `97d3e429` | library-rerank | on (real `BAAI/bge-reranker-base`) | off | 0.150 | 0.750 |
+| `f5e4bf9c` | library-both | on | on | 0.138 | 0.688 |
+
+Reading: expansion slightly hurts here (11/16 vs 12/16) — synonym
+variations add noise under coarse trigram retrieval; reranking changes
+nothing on this set (same membership, reordered). Neither arm moves the
+needle while retrieval itself is hash-based — the honest conclusion is
+that **embeddings are the bottleneck**, not ranking. Caveats: the
+reranker default is English-centric (`bge-reranker-base`, Arabic ideally
+wants a multilingual reranker), and `evaluation_runs` storage drops the
+`reranker_used` axis (comparison currently reproducible only from this
+log + run_ids, not from the DB).
+
 Reading: recall climbs as genuine banks are added (0.625 → 0.75);
 precision stays ~0.13–0.15, the expected ceiling of trigram-hash
 retrieval. Latency is Gemini-dominated (timeouts + fallback), **not**
