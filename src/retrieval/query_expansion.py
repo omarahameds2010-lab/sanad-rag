@@ -211,7 +211,7 @@ def multi_query_retrieve(
     collection = collection_for_chunker(chunker_type, embedding_model.dimensions)
     
     for q_idx, query in enumerate(queries):
-        query_vector = embedding_model.embed([normalize_for_retrieval(query)])[0]
+        query_vector = embedding_model.embed_query(normalize_for_retrieval(query))
         results = hybrid_retrieve(query_vector, query, top_k=top_k * 2, collection=collection,
                                   query_filter=query_filter, payload_filter=payload_filter)
         

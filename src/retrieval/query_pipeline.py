@@ -39,7 +39,7 @@ def retrieve_passages(
 
     retrieval_start = perf_counter()
     normalized_question = normalize_for_retrieval(question)
-    question_vector = embedding_model.embed([normalized_question])[0]
+    question_vector = embedding_model.embed_query(normalized_question)
     query_filter = build_scope_filter(source_ids, branch)
 
     def payload_filter(payload: dict) -> bool:
@@ -354,7 +354,7 @@ def _hierarchical_retrieve_with_expansion(
         # Get embedding for this variation
         from src.ingestion.normalize import normalize_for_retrieval
         normalized = normalize_for_retrieval(expanded_q)
-        question_vector = embedding_model.embed([normalized])[0]
+        question_vector = embedding_model.embed_query(normalized)
         
         # Run standard hierarchical retrieval for this variation
         parents = _hierarchical_retrieve(

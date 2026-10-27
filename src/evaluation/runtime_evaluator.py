@@ -185,7 +185,7 @@ class RuntimeEvaluator:
         is_hierarchical = request.config.chunker_type.value == "hierarchical"
         
         normalized_query = normalize_for_retrieval(query)
-        query_vector = self.embedding_model.embed([normalized_query])[0]
+        query_vector = self.embedding_model.embed_query(normalized_query)
         
         if is_hierarchical:
             # Hierarchical retrieval with tenant filtering

@@ -15,13 +15,36 @@ class EmbeddingModel(ABC):
 
     @abstractmethod
     def embed(self, texts: list[str]) -> list[list[float]]:
-        """Return one embedding vector per input text."""
+        """Return one embedding vector per input text (passages/documents)."""
         raise NotImplementedError
+
+    def embed_query(self, text: str) -> list[float]:
+        """Embed a search query.
+
+        Models with asymmetric query/passage conventions (e5) override this.
+        Symmetric models (bge-m3) use the same encoding for both.
+        """
+        return self.embed([text])[0]
 
     @property
     @abstractmethod
     def dimensions(self) -> int:
         raise NotImplementedError
+
+
+def _is_e5(model_name: str) -> bool:
+    return "e5" in model_name.lower()
+
+
+def _format_passages(model_name: str, texts: list[str]) -> list[str]:
+    # e5 expects "passage: " on documents; bge-m3 expects no prefix.
+    return [f"passage: {text}" for text in texts] if _is_e5(model_name) else texts
+
+
+def _format_query(model_name: str, text: str) -> str:
+    # e5 expects "query: " on queries. Applying the passage prefix to a query
+    # (the old behaviour) silently degrades every e5 retrieval number.
+    return f"query: {text}" if _is_e5(model_name) else text
 
 
 class SentenceTransformerEmbedding(EmbeddingModel):
@@ -37,10 +60,16 @@ class SentenceTransformerEmbedding(EmbeddingModel):
         self._model = SentenceTransformer(model_name)
 
     def embed(self, texts: list[str]) -> list[list[float]]:
-        # e5 models expect a "query: " / "passage: " prefix convention
-        prefixed = [f"passage: {t}" for t in texts]
-        vectors = self._model.encode(prefixed, normalize_embeddings=True)
+        vectors = self._model.encode(
+            _format_passages(self.name, texts), normalize_embeddings=True
+        )
         return vectors.tolist()
+
+    def embed_query(self, text: str) -> list[float]:
+        vector = self._model.encode(
+            [_format_query(self.name, text)], normalize_embeddings=True
+        )[0]
+        return vector.tolist()
 
     @property
     def dimensions(self) -> int:
