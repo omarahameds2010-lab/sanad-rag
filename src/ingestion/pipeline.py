@@ -23,6 +23,7 @@ from src.ingestion.branches import infer_branch
 from src.ingestion.normalize import clean_for_display, normalize_for_retrieval
 from src.retrieval.vector_store import (
     collection_for_chunker,
+    delete_by_sources,
     ensure_collection,
     get_client,
     upsert_chunks,
@@ -127,6 +128,10 @@ def ingest_document(
     client = get_client()
     collection = collection_for_chunker(chunker_type, embedding_model.dimensions)
     ensure_collection(client, dims=embedding_model.dimensions, collection=collection)
+    # Replace, don't merge. Upserting chunk_ids 0..n leaves a stale tail when
+    # the new text is shorter than the previous ingestion (e.g. re-ingesting
+    # a corrected source), which silently corrupts retrieval and evaluation.
+    delete_by_sources([source_id], collections=[collection])
     upsert_chunks(client, chunk_ids, vectors, payloads, collection=collection)
 
     from src.evaluation.storage import record_ingested_document
@@ -201,6 +206,7 @@ def _ingest_hierarchical(
     client = get_client()
     child_collection = collection_for_chunker(f"{chunker_type}_children", embedding_model.dimensions)
     ensure_collection(client, dims=embedding_model.dimensions, collection=child_collection)
+    delete_by_sources([source_id], collections=[child_collection])
     upsert_chunks(client, child_ids, child_vectors, child_payloads, collection=child_collection)
 
     # ---- Store PARENT chunks in a separate collection (for context lookup) ----
@@ -232,6 +238,7 @@ def _ingest_hierarchical(
     
     parent_collection = collection_for_chunker(f"{chunker_type}_parents", embedding_model.dimensions)
     ensure_collection(client, dims=embedding_model.dimensions, collection=parent_collection)
+    delete_by_sources([source_id], collections=[parent_collection])
     upsert_chunks(client, parent_ids, parent_vectors, parent_payloads, collection=parent_collection)
 
     from src.evaluation.storage import record_ingested_document

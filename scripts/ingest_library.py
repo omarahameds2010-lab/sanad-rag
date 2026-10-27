@@ -1,20 +1,38 @@
-"""Ingest the full SANAD knowledge library (committed corpus only).
+"""Ingest the audited SANAD corpus through the running API.
 
-Skips seeds_*.txt (raw generator input — the expanded gen_*.txt files
-are ingested instead, to avoid duplicate content).
+Only sources listed in ``data/knowledge/corpus_manifest.json`` are sent, and
+each file is SHA-256 verified first. Seeds, filler, and local-only shards are
+not reachable from this script.
 
 Usage:
-    python scripts/ingest_library.py
+    python scripts/ingest_library.py --dry-run
+    SANAD_API_KEY=... python scripts/ingest_library.py --chunker hierarchical
 """
 
+from __future__ import annotations
+
+import argparse
 import json
+import os
+import sys
+import urllib.error
 import urllib.request
 from pathlib import Path
 
-BASE = "http://localhost:8000"
-HEADERS = {"Content-Type": "application/json", "X-API-Key": "demo-key-123"}
-ROOT = Path(__file__).parent.parent
-KNOWLEDGE = ROOT / "data" / "knowledge"
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from src.corpus.manifest import (
+    DEFAULT_MANIFEST,
+    load_manifest,
+    manifest_sources,
+    verify_source,
+)
+
+BASE = os.environ.get("SANAD_API_URL", "http://localhost:8000")
+HEADERS = {
+    "Content-Type": "application/json",
+    "X-API-Key": os.environ.get("SANAD_API_KEY", "demo-key-123"),
+}
 
 
 def call(method, path, payload=None, timeout=300):
@@ -27,24 +45,61 @@ def call(method, path, payload=None, timeout=300):
         return e.code, e.read().decode("utf-8", "replace")
 
 
-def main() -> None:
-    files = sorted(
-        p for p in KNOWLEDGE.glob("*.txt")
-        if not p.name.startswith("seeds_") and not p.name.startswith(".")
+def main() -> int:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--manifest", default=str(DEFAULT_MANIFEST))
+    parser.add_argument(
+        "--chunker",
+        default="hierarchical",
+        choices=["arabic", "baseline", "hierarchical"],
     )
-    print(f"Found {len(files)} knowledge files")
-    for path in files:
-        text = path.read_text(encoding="utf-8")
-        source_id = path.stem + "_v1"
-        status, body = call("POST", "/ingest", {
-            "source_id": source_id,
-            "text": text,
-            "metadata": {"dataset": "sanad-library", "file": path.name},
-            "chunker_type": "hierarchical",
-        }, timeout=600)
+    parser.add_argument("--dry-run", action="store_true")
+    args = parser.parse_args()
+
+    sources = manifest_sources(load_manifest(args.manifest))
+    print(f"Manifest: {len(sources)} approved source(s)")
+
+    failed = 0
+    for source in sources:
+        try:
+            text = verify_source(source)
+        except (OSError, ValueError) as exc:
+            print(f"✗ {source.source_id}: {exc}", file=sys.stderr)
+            failed += 1
+            continue
+        if args.dry_run:
+            print(f"  {source.source_id:28} {len(text):7,} chars  {source.title}")
+            continue
+        status, body = call(
+            "POST",
+            "/ingest",
+            {
+                "source_id": source.source_id,
+                "text": text,
+                "metadata": {
+                    "dataset": "sanad-library",
+                    "file": Path(source.file).name,
+                    "title": source.title,
+                    "branch": source.branch,
+                },
+                "chunker_type": args.chunker,
+            },
+            timeout=600,
+        )
         n = body.get("n_chunks") if isinstance(body, dict) else body
-        print(f"{source_id}: {status} chunks={n}")
+        print(f"{source.source_id}: {status} chunks={n}")
+        if status != 200:
+            failed += 1
+
+    if failed:
+        print(f"{failed} source(s) failed", file=sys.stderr)
+        return 1
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

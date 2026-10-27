@@ -81,8 +81,14 @@ Command: `python -m pytest tests/ -q` (CI simulation used the same command).
 
 Golden questions are written against chunk text read verbatim from the
 banks (chunk ids reproduced by re-chunking with the same `arabic`
-settings). Filler files (`adab_1..8`, `*touch*`, mojibake lists) are
-deliberately excluded from the golden set.
+settings). The shipped corpus is now governed by
+`data/knowledge/corpus_manifest.json`: 23 sources with SHA-256 fingerprints,
+enforced by `scripts/audit_corpus.py --strict` and
+`tests/test_corpus_manifest.py`. Template filler (`adab_1..8`), the
+English-padded `adab_al_talib` / `hadith_qudsiya_large` stubs, the
+`seeds_*` generator inputs, and the 343 local-only `gen_supreme_core_*`
+shards are excluded by policy and cannot be indexed by
+`scripts/ingest_corpus.py`.
 
 | run_id (short) | config | n | Precision@5 | Recall@5 | p50 (s) | p95 (s) |
 |---|---|---|---|---|---|---|

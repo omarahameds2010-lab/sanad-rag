@@ -1,0 +1,270 @@
+{
+  "version": 1,
+  "subject": "اللغة العربية",
+  "generated_at": "2026-10-27",
+  "policy": "Only sources listed here may be indexed. Every file is checked by scripts/audit_corpus.py (no template repetition, no English padding, mostly Arabic) and by tests/test_corpus_manifest.py (exists + sha256).",
+  "sources": [
+    {
+      "source_id": "alfiyya_study_v1",
+      "file": "data/knowledge/alfiyya_study.txt",
+      "title": "دراسة ألفية ابن مالك",
+      "branch": "nahw",
+      "chars": 7082,
+      "sha256": "a3d6488fcbb3f04446fbf8ba50f9b6b3bab5002b9537be72b4b4f9426f9c1b70"
+    },
+    {
+      "source_id": "arood_qawafi_v1",
+      "file": "data/knowledge/arood_qawafi.txt",
+      "title": "العروض والقوافي",
+      "branch": "arood",
+      "chars": 6499,
+      "sha256": "c42ea3c71eb5622c0becfdce220590fc55c1603b5acdbd271194b642140a9437"
+    },
+    {
+      "source_id": "balagha_deep_v1",
+      "file": "data/knowledge/balagha_deep.txt",
+      "title": "البلاغة والنقد — دراسة معمقة",
+      "branch": "balagha",
+      "chars": 10875,
+      "sha256": "0440cd084d09155be760c6d6e2086554bc89e4ef1ba5e3fb5fc1db8a814fba35"
+    },
+    {
+      "source_id": "exam_bank_balagha_v1",
+      "file": "data/knowledge/exam_bank_balagha.txt",
+      "title": "بنك أسئلة البلاغة",
+      "branch": "balagha",
+      "chars": 10389,
+      "sha256": "658afb3d25e6ca89d50c628ff17ef3027c9d68258082494cf48fc7cdc5d0fa9c"
+    },
+    {
+      "source_id": "exam_bank_nahw_v1",
+      "file": "data/knowledge/exam_bank_nahw.txt",
+      "title": "بنك أسئلة النحو",
+      "branch": "nahw",
+      "chars": 16874,
+      "sha256": "9a2af98e60b2d743168eec079e154bb0d45078601d2bbcfbced98cb134904748"
+    },
+    {
+      "source_id": "fiqh_lugha_v1",
+      "file": "data/knowledge/fiqh_lugha.txt",
+      "title": "فقه اللغة وأسرار العربية",
+      "branch": "lugha",
+      "chars": 10739,
+      "sha256": "149a4f8f579c184e6c9ab385314b55d666ae22b2a63b39e2d31d2e067e8280be"
+    },
+    {
+      "source_id": "fonoun_radd_v1",
+      "file": "data/knowledge/fonoun_radd.txt",
+      "title": "فنون الرد في الامتحانات",
+      "branch": "balagha",
+      "chars": 3659,
+      "sha256": "f112443040e3848a82a82632e23a84eeffd520998a9e814d9d5173f51218cc23"
+    },
+    {
+      "source_id": "gen_fixed_irab_v1",
+      "file": "data/knowledge/gen_fixed_irab.txt",
+      "title": "الإعراب المثبت — أمثلة محلولة",
+      "branch": "nahw",
+      "chars": 19881,
+      "sha256": "fdd58dbce49c0c6c5a1159db3396138b5d885366d8839ea91d9077310ff5dc66"
+    },
+    {
+      "source_id": "gen_sarf_tables_p1_v1",
+      "file": "data/knowledge/gen_sarf_tables_p1.txt",
+      "title": "جداول الصرف — الجزء الأول",
+      "branch": "sarf",
+      "chars": 103039,
+      "sha256": "3149cfe26aab3778d8b71e8b5553b0f827cf2f10344656cbfd3bcf25455f8268"
+    },
+    {
+      "source_id": "gen_sarf_tables_p2_v1",
+      "file": "data/knowledge/gen_sarf_tables_p2.txt",
+      "title": "جداول الصرف — الجزء الثاني",
+      "branch": "sarf",
+      "chars": 105478,
+      "sha256": "168c27a6ca3eb66c5e98f21bc08649d7457d9e37272387ab2e83d2033caa7696"
+    },
+    {
+      "source_id": "gen_vocab_bank_v1",
+      "file": "data/knowledge/gen_vocab_bank.txt",
+      "title": "بنك المفردات",
+      "branch": "lugha",
+      "chars": 160650,
+      "sha256": "49a7c825dc59ced816e03acbece17406badf4371d0407433dcc048f7ad267e08"
+    },
+    {
+      "source_id": "huruf_maani_v1",
+      "file": "data/knowledge/huruf_maani.txt",
+      "title": "الحروف ومعانيها",
+      "branch": "nahw",
+      "chars": 8054,
+      "sha256": "93490d9289e2329391c0374264079d6ee4a113ef49c12a3361f10c40443e6b74"
+    },
+    {
+      "source_id": "juzamma_tafsir_v1",
+      "file": "data/knowledge/juzamma_tafsir.txt",
+      "title": "تفسير جزء عمّ",
+      "branch": "quran",
+      "chars": 12594,
+      "sha256": "824a17ea805bb80791278a744a5a83a116fc1981b0717d2ca105bb1cee0f3585"
+    },
+    {
+      "source_id": "muallaqat_study_v1",
+      "file": "data/knowledge/muallaqat_study.txt",
+      "title": "دراسة المعلقات",
+      "branch": "arood",
+      "chars": 4572,
+      "sha256": "a74f4915d23b6247aff3553a76756aac3089f3edeb6b8572899823979274ac6e"
+    },
+    {
+      "source_id": "nahw_advanced_v1",
+      "file": "data/knowledge/nahw_advanced.txt",
+      "title": "النحو المتقدم",
+      "branch": "nahw",
+      "chars": 15623,
+      "sha256": "d9c121ad0b2f04362bc02894c9dcddd9336f6c3d83a7e4096432da351139c2b7"
+    },
+    {
+      "source_id": "nahw_edaadi_v1",
+      "file": "data/knowledge/nahw_edaadi.txt",
+      "title": "النحو الإعدادي",
+      "branch": "nahw",
+      "chars": 4974,
+      "sha256": "a9c318b5f8184a440977e44f3afa3b7d9ad656127a81c7b0e7978e2600b01fea"
+    },
+    {
+      "source_id": "nahw_thanaweya_v1",
+      "file": "data/knowledge/nahw_thanaweya.txt",
+      "title": "النحو الثانوي",
+      "branch": "nahw",
+      "chars": 8596,
+      "sha256": "fa3aed5fd0e8117fd5450752aeeb22e3fcdf90cf498c120c4d790adfc3b84346"
+    },
+    {
+      "source_id": "qiraa_nosous_v1",
+      "file": "data/knowledge/qiraa_nosous.txt",
+      "title": "قراءة النصوص",
+      "branch": "adab",
+      "chars": 3818,
+      "sha256": "c58060c14dc1c0cf2d845d317363359f914be16de00a5ce6960b448974de832f"
+    },
+    {
+      "source_id": "quran_vocab_v1",
+      "file": "data/knowledge/quran_vocab.txt",
+      "title": "مفردات القرآن",
+      "branch": "lugha",
+      "chars": 8612,
+      "sha256": "fb74a1d3ff69e29251028a56e5f515a526e2eddf94ebe0e16e25d2b6a7fb93b1"
+    },
+    {
+      "source_id": "seera_nabaweya_v1",
+      "file": "data/knowledge/seera_nabaweya.txt",
+      "title": "السيرة النبوية",
+      "branch": "sira",
+      "chars": 5948,
+      "sha256": "92d2532db844df3335ac34b54d602d2314b798316bb07903a87845a96dd3c235"
+    },
+    {
+      "source_id": "taabeer_styles_v1",
+      "file": "data/knowledge/taabeer_styles.txt",
+      "title": "أساليب التعبير",
+      "branch": "adab",
+      "chars": 7048,
+      "sha256": "aee6919d04290268922384017dcb151a1b838a26609091f499ee114199f4172b"
+    },
+    {
+      "source_id": "taabeer_v1",
+      "file": "data/knowledge/taabeer.txt",
+      "title": "التعبير",
+      "branch": "adab",
+      "chars": 3847,
+      "sha256": "056134c5bae51427364e2e4df5f96087425c79415c256c49c9e678809b709191"
+    },
+    {
+      "source_id": "tahleel_egaba_v1",
+      "file": "data/knowledge/tahleel_egaba.txt",
+      "title": "تحليل الإجابة",
+      "branch": "misc",
+      "chars": 3448,
+      "sha256": "c61be8fe252faa6238dfc8036ef23084c325366874d3012b97ff9bf26e5ed70c"
+    }
+  ],
+  "excluded": [
+    {
+      "pattern": "data/knowledge/seeds_*.txt",
+      "reason": "raw generator input; not learner-facing"
+    },
+    {
+      "pattern": "data/knowledge/gen_supreme_core_*.txt",
+      "reason": "local-only synthetic shards; gitignored and never indexed"
+    },
+    {
+      "pattern": "data/knowledge/adab_[1-8].txt",
+      "reason": "template filler: one line repeated 1000x; removed from git"
+    },
+    {
+      "file": "data/knowledge/adab_al_talib.txt",
+      "reason": "English-padded stub (15% Arabic); removed from git"
+    },
+    {
+      "file": "data/knowledge/hadith_qudsiya_large.txt",
+      "reason": "English-padded/corrupt hadith text; removed — hadith stays empty"
+    }
+  ],
+  "audited_not_yet_ingested": [
+    {
+      "file": "data/knowledge/aalam_adab.txt",
+      "reason": "PASS audit; queued for the next corpus wave (not in the 23-source live index)"
+    },
+    {
+      "file": "data/knowledge/amthal_hikam.txt",
+      "reason": "PASS audit; queued for the next corpus wave (not in the 23-source live index)"
+    },
+    {
+      "file": "data/knowledge/balagha.txt",
+      "reason": "PASS audit; queued for the next corpus wave (not in the 23-source live index)"
+    },
+    {
+      "file": "data/knowledge/diwan_selections.txt",
+      "reason": "PASS audit; queued for the next corpus wave (not in the 23-source live index)"
+    },
+    {
+      "file": "data/knowledge/duaa_quran_bank.txt",
+      "reason": "PASS audit; queued for the next corpus wave (not in the 23-source live index)"
+    },
+    {
+      "file": "data/knowledge/insha_models.txt",
+      "reason": "PASS audit; queued for the next corpus wave (not in the 23-source live index)"
+    },
+    {
+      "file": "data/knowledge/irab_quran_hadith.txt",
+      "reason": "PASS audit; queued for the next corpus wave (not in the 23-source live index)"
+    },
+    {
+      "file": "data/knowledge/nahj_selections.txt",
+      "reason": "PASS audit; queued for the next corpus wave (not in the 23-source live index)"
+    },
+    {
+      "file": "data/knowledge/nosous_qiraa_bank.txt",
+      "reason": "PASS audit; queued for the next corpus wave (not in the 23-source live index)"
+    },
+    {
+      "file": "data/knowledge/opensource_nazm_ajurrumiyya.txt",
+      "reason": "PASS audit; queued for the next corpus wave (not in the 23-source live index)"
+    },
+    {
+      "file": "data/knowledge/sarf_emlaa.txt",
+      "reason": "PASS audit; queued for the next corpus wave (not in the 23-source live index)"
+    },
+    {
+      "file": "data/knowledge/tarikh_masr.txt",
+      "reason": "PASS audit; queued for the next corpus wave (not in the 23-source live index)"
+    }
+  ],
+  "reviewed_non_filler": [
+    {
+      "file": "data/knowledge/gen_vocab_bank.txt",
+      "reason": "Audit REVIEW (0.76 normalized line diversity) is structural, not filler: 5,029 distinct vocabulary entries in a consistent 'meaning / antonym / plural / example' template, 100% Arabic. Accepted after manual review."
+    }
+  ]
+}

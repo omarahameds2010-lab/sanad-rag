@@ -60,3 +60,73 @@ def test_empty_text_ingests_zero_chunks(isolated_qdrant_path):
         source_id="empty-doc", raw_text="   ", embedding_model=embedding_model
     )
     assert result["n_chunks"] == 0
+
+
+def _count_source(collection: str, source_id: str) -> int:
+    from qdrant_client.models import FieldCondition, Filter, MatchValue
+
+    client = get_client()
+    return client.count(
+        collection_name=collection,
+        count_filter=Filter(
+            must=[FieldCondition(key="source_id", match=MatchValue(value=source_id))]
+        ),
+        exact=True,
+    ).count
+
+
+def test_reingest_shorter_text_replaces_stale_chunks(isolated_qdrant_path):
+    """A corrected/shorter source must not keep stale tail chunks.
+
+    Regression: upserting chunk_ids 0..n over an older, longer ingestion used
+    to leave the old tail behind, silently changing the corpus that eval
+    numbers are measured on.
+    """
+    embedding_model = HashEmbedding(dims=32)
+    source_id = "test-reingest-" + uuid.uuid4().hex
+    collection = collection_for_chunker("arabic", embedding_model.dimensions)
+
+    long_text = "\n".join([ARABIC_SAMPLE] * 20)
+    first = ingest_document(
+        source_id=source_id, raw_text=long_text, embedding_model=embedding_model
+    )
+    assert first["n_chunks"] > 1
+    assert _count_source(collection, source_id) == first["n_chunks"]
+
+    second = ingest_document(
+        source_id=source_id, raw_text=ARABIC_SAMPLE, embedding_model=embedding_model
+    )
+    assert second["n_chunks"] == 1
+    assert _count_source(collection, source_id) == 1
+
+
+def test_hierarchical_reingest_replaces_children_and_parents(isolated_qdrant_path):
+    embedding_model = HashEmbedding(dims=32)
+    source_id = "test-h-reingest-" + uuid.uuid4().hex
+    children_collection = collection_for_chunker(
+        "hierarchical_children", embedding_model.dimensions
+    )
+    parents_collection = collection_for_chunker(
+        "hierarchical_parents", embedding_model.dimensions
+    )
+
+    long_text = "\n".join([ARABIC_SAMPLE] * 30)
+    first = ingest_document(
+        source_id=source_id,
+        raw_text=long_text,
+        embedding_model=embedding_model,
+        chunker_type="hierarchical",
+    )
+    assert first["n_children"] > 1
+    assert _count_source(children_collection, source_id) == first["n_children"]
+    assert _count_source(parents_collection, source_id) == first["n_parents"]
+
+    second = ingest_document(
+        source_id=source_id,
+        raw_text=ARABIC_SAMPLE,
+        embedding_model=embedding_model,
+        chunker_type="hierarchical",
+    )
+    assert second["n_children"] == 1
+    assert _count_source(children_collection, source_id) == 1
+    assert _count_source(parents_collection, source_id) == second["n_parents"]
