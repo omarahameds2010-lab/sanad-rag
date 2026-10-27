@@ -25,7 +25,7 @@ from src.evaluation.metrics import (
 from src.evaluation.storage import record_evaluation_run
 from src.generation.llm_client import LLMClient
 from src.ingestion.pipeline import ingest_document
-from src.retrieval.query_pipeline import answer_question
+from src.retrieval.query_pipeline import answer_question, retrieve_passages
 from src.retrieval.reranker import CrossEncoderReranker
 
 
@@ -50,30 +50,47 @@ def ingest_golden_sources(
 def run_evaluation(
     golden_dataset_path: str,
     embedding_model: EmbeddingModel,
-    llm: LLMClient,
+    llm: LLMClient | None = None,
     config_name: str = "baseline",
     top_k: int = 5,
     chunker_type: str = "arabic",
     enable_reranking: bool = False,
     enable_query_expansion: bool = False,
     fallback_llm: LLMClient | None = None,
+    ingest_sources: bool = True,
 ) -> dict:
     """
     Runs every question in the golden dataset through the real query
     pipeline, scores retrieval against the golden relevant_chunk_ids, and
     persists the run. Returns the full metrics dict.
+
+    Pass ``llm=None`` for a retrieval-only run: no generation call is made
+    and latency is pure retrieval. That is the honest way to measure
+    embedding/retrieval quality without a fake LLM inflating the dev flag.
+
+    Pass ``ingest_sources=False`` to evaluate an already-populated collection
+    (for example after ``scripts/ingest_corpus.py``) without re-embedding the
+    golden source documents.
     """
-    if embedding_model.name.endswith("DEV-ONLY") or llm.name.endswith("DEV-ONLY"):
+    dev_embedding = embedding_model.name.endswith("DEV-ONLY")
+    dev_llm = llm is not None and llm.name.endswith("DEV-ONLY")
+    if dev_embedding or dev_llm:
         print(
             "[WARNING] running evaluation with a dev-only backend "
-            f"(embedding={embedding_model.name}, llm={llm.name}). "
+            f"(embedding={embedding_model.name}, llm={llm.name if llm else 'none'}). "
             "These numbers prove the harness works end-to-end — they are "
             "NOT real retrieval-quality or groundedness numbers. Do not "
             "put them in docs/benchmark_results.md as real results."
         )
 
     golden_data = load_golden_dataset(golden_dataset_path)
-    ingest_golden_sources(golden_data, embedding_model, chunker_type=chunker_type)
+    if ingest_sources:
+        ingest_golden_sources(golden_data, embedding_model, chunker_type=chunker_type)
+    else:
+        print(
+            "[INFO] ingest_sources=False: evaluating the existing collection "
+            "without re-embedding golden source documents."
+        )
 
     reranker = CrossEncoderReranker() if enable_reranking else None
 
@@ -88,34 +105,49 @@ def run_evaluation(
 
     retrieval_results = []
     for example in golden_examples:
-        result = answer_question(
-            question=example.question,
-            embedding_model=embedding_model,
-            primary_llm=llm,
-            fallback_llm=fallback_llm,
-            top_k=top_k,
-            reranker=reranker,
-            chunker_type=chunker_type,
-            enable_query_expansion=enable_query_expansion,
-        )
-        retrieval_results.append(
-            RetrievalResult(
+        if llm is None:
+            chunks, retrieval_ms = retrieve_passages(
                 question=example.question,
-                retrieved_chunk_ids=result["retrieved_chunk_ids"],
-                latency_seconds=(result["retrieval_ms"] + result["generation_ms"]) / 1000,
+                embedding_model=embedding_model,
+                top_k=top_k,
+                reranker=reranker,
+                chunker_type=chunker_type,
+                enable_query_expansion=enable_query_expansion,
             )
-        )
+            retrieval_results.append(
+                RetrievalResult(
+                    question=example.question,
+                    retrieved_chunk_ids=[c["chunk_id"] for c in chunks],
+                    latency_seconds=retrieval_ms / 1000,
+                )
+            )
+        else:
+            result = answer_question(
+                question=example.question,
+                embedding_model=embedding_model,
+                primary_llm=llm,
+                fallback_llm=fallback_llm,
+                top_k=top_k,
+                reranker=reranker,
+                chunker_type=chunker_type,
+                enable_query_expansion=enable_query_expansion,
+            )
+            retrieval_results.append(
+                RetrievalResult(
+                    question=example.question,
+                    retrieved_chunk_ids=result["retrieved_chunk_ids"],
+                    latency_seconds=(result["retrieval_ms"] + result["generation_ms"]) / 1000,
+                )
+            )
 
     metrics = evaluate_retrieval(golden_examples, retrieval_results, k=top_k)
     metrics["config_name"] = config_name
     metrics["embedding_model"] = embedding_model.name
-    metrics["llm_model"] = llm.name
+    metrics["llm_model"] = llm.name if llm is not None else "none (retrieval-only)"
     metrics["chunker_type"] = chunker_type
     metrics["reranker_used"] = reranker.name if reranker else "none"
     metrics["query_expansion_enabled"] = enable_query_expansion
-    metrics["is_dev_only_run"] = embedding_model.name.endswith("DEV-ONLY") or llm.name.endswith(
-        "DEV-ONLY"
-    )
+    metrics["is_dev_only_run"] = dev_embedding or dev_llm
 
     run_id = str(uuid.uuid4())
     record_evaluation_run(run_id=run_id, config_name=config_name, metrics=metrics)

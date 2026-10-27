@@ -19,27 +19,11 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent))
+
+from _models import get_embedding_model
 
 from src.evaluation.harness import run_evaluation
-
-
-def get_real_embedding_model():
-    choice = os.environ.get("EMBEDDING_MODEL", "hash-dev")
-    if choice == "multilingual-e5":
-        from src.embeddings.base import SentenceTransformerEmbedding
-
-        return SentenceTransformerEmbedding()
-    if choice == "bge-m3":
-        from src.embeddings.base import SentenceTransformerEmbedding
-
-        return SentenceTransformerEmbedding(model_name="BAAI/bge-m3")
-    from src.embeddings.base import HashEmbedding
-
-    print(
-        "⚠️  EMBEDDING_MODEL not set to a real model — using HashEmbedding. "
-        "Set EMBEDDING_MODEL=multilingual-e5 (or bge-m3) for real numbers."
-    )
-    return HashEmbedding()
 
 
 def get_real_llm():
@@ -110,25 +94,44 @@ def main():
         help="Do not append the result to docs/benchmark_results.md "
         "(use for dev-only smoke runs so they are never mistaken for real results)",
     )
+    parser.add_argument(
+        "--retrieval-only",
+        action="store_true",
+        help="Score retrieval only (no LLM generation). Use this for honest "
+        "embedding/retrieval benchmarks; latency is pure retrieval.",
+    )
+    parser.add_argument(
+        "--no-ingest",
+        action="store_true",
+        help="Evaluate the existing collection; do not re-embed golden source "
+        "documents (use after scripts/ingest_corpus.py).",
+    )
     args = parser.parse_args()
 
     metrics = run_evaluation(
         golden_dataset_path=args.golden,
-        embedding_model=get_real_embedding_model(),
-        llm=get_real_llm(),
+        embedding_model=get_embedding_model(),
+        llm=None if args.retrieval_only else get_real_llm(),
         config_name=args.config,
         top_k=args.top_k,
         chunker_type=args.chunker,
         enable_reranking=args.rerank,
+        ingest_sources=not args.no_ingest,
     )
 
     if not args.no_append:
-        append_benchmark_result(metrics)
+        if metrics.get("is_dev_only_run"):
+            print(
+                "\nDev-only run: not appended to docs/benchmark_results.md. "
+                "Only real embedding/LLM runs belong there."
+            )
+        else:
+            append_benchmark_result(metrics)
+            print("\nAppended to docs/benchmark_results.md")
 
     print("\n=== Evaluation Complete ===")
     for key, value in metrics.items():
         print(f"{key}: {value}")
-    print("\nAppended to docs/benchmark_results.md")
 
 
 if __name__ == "__main__":

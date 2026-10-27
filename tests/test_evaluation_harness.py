@@ -69,6 +69,63 @@ def test_recall_is_perfect_when_corpus_is_small_and_topk_generous(isolated_env):
     assert metrics["recall_at_k"] == 1.0
 
 
+def test_retrieval_only_run_needs_no_llm(isolated_env):
+    """Retrieval quality must be measurable without any generation call —
+    that is how the real bge-m3 benchmark is run (no fake LLM involved)."""
+    metrics = run_evaluation(
+        golden_dataset_path=GOLDEN_PATH,
+        embedding_model=HashEmbedding(dims=64),
+        llm=None,
+        top_k=5,
+    )
+    assert metrics["llm_model"] == "none (retrieval-only)"
+    assert metrics["recall_at_k"] == 1.0
+    assert metrics["is_dev_only_run"] is True  # hash embedding is still dev-only
+
+
+def test_retrieval_only_with_real_named_embedding_is_not_dev_only(isolated_env):
+    """The dev-only flag must track the embedding, not the absence of an LLM:
+    otherwise a real bge-m3 run could never be recorded as real."""
+
+    class NamedHash(HashEmbedding):
+        def __init__(self):
+            super().__init__(dims=64)
+            self.name = "test-embedding-not-dev-only"
+
+    metrics = run_evaluation(
+        golden_dataset_path=GOLDEN_PATH,
+        embedding_model=NamedHash(),
+        llm=None,
+        top_k=5,
+    )
+    assert metrics["is_dev_only_run"] is False
+    stored = get_evaluation_run(metrics["run_id"])
+    assert stored["is_dev_only_run"] == 0
+    assert stored["llm_model"] == "none (retrieval-only)"
+
+
+def test_can_evaluate_existing_collection_without_reingesting(isolated_env):
+    """A benchmark must be able to score the corpus that was actually
+    ingested, not silently re-embed a subset of golden excerpts."""
+    from src.ingestion.pipeline import ingest_document
+
+    model = HashEmbedding(dims=64)
+    ingest_document(
+        source_id="only-doc",
+        raw_text="نص عربي للاختبار فقط.",
+        embedding_model=model,
+    )
+    metrics = run_evaluation(
+        golden_dataset_path=GOLDEN_PATH,
+        embedding_model=model,
+        llm=None,
+        top_k=5,
+        ingest_sources=False,
+    )
+    assert metrics["n_examples"] == 4
+    assert metrics["recall_at_k"] == 0.0  # the golden sources were not ingested
+
+
 def test_stored_run_keeps_experimental_axes(isolated_env):
     """Comparisons must be reproducible from the DB, not just Markdown:
     embedding/llm/chunker/reranker/expansion/dev-flag survive the roundtrip."""
