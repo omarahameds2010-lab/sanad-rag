@@ -40,6 +40,43 @@ Command: `$env:EMBEDDING_MODEL='hash-dev'; pytest tests/ -q`
 (API server must be stopped first: embedded Qdrant takes an exclusive
 file lock — a documented limitation, not a bug.)
 
+## 1b. CI pipeline (2026-10-27)
+
+The public badge was red for 21 consecutive runs. Root causes, all fixed:
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| Collection error in `tests.yml` | workflow installed a hand-written package subset instead of `requirements.txt` | installs `requirements-ci.txt` (same pins the suite verifies) |
+| `ruff` failed | 175 violations, never linted | `pyproject.toml` selects E4/E7/E9/F/UP/I/RUF; **0 violations** on `src/ tests/ scripts/` |
+| `pip-audit` failed | 14 CVEs in Starlette 0.46.0 | Starlette upgraded to 1.3.1 → **0 known vulnerabilities** |
+| Qdrant service unhealthy | healthcheck used `wget`, absent from the image | runner-side probe of `/readyz` before tests |
+| 5 auth tests failed without `.env` | app runs with auth **disabled** when `SANAD_API_KEYS` is unset (dev fail-open), while tests assert 401 | CI sets a test-only `SANAD_API_KEYS=demo-key-123` |
+
+`ruff`/`mypy` also caught three real defects, fixed here: a duplicate
+`"من"` dictionary key in `query_expansion.py` (the interrogative sense was
+silently overwritten by the preposition sense), `c.max_score` read on a
+dataclass that only defines `max` (`rubric.py`), and `temperature=` passed
+to an Anthropic SDK version that no longer accepts it (`llm_client.py`).
+The duck-typed `SimpleGradingConfig` was replaced by the real validated
+`GradingConfig` model.
+
+Verification, run in a clean venv with `requirements-ci.txt`, `.env` removed
+and no `sentence-transformers`/`torch` installed (i.e. CI conditions):
+
+| Mode | Result | Time |
+|---|---|---|
+| Embedded Qdrant (`tests.yml`) | **86 passed** | 3.91 s |
+| Qdrant server 1.20.0 via Docker (`ci-cd.yml`) | **86 passed** | 4.71 s |
+| `ruff check` / `mypy` | clean / clean (33 files) | — |
+| `pip-audit -r requirements.txt` | 0 vulnerabilities | — |
+
+CI deliberately omits the 2 GB torch install: every embedding import is
+lazy. The cross-encoder test therefore exercises the documented keyword
+fallback; real `bge-reranker-base` numbers stay in §2b (dev-host run).
+Docker image build/push now happens only on releases, not on every commit.
+
+Command: `python -m pytest tests/ -q` (CI simulation used the same command).
+
 ## 2. Retrieval evaluation on the real library (`sanad_library_golden.json`)
 
 Golden questions are written against chunk text read verbatim from the

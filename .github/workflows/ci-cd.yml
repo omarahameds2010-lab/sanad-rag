@@ -9,9 +9,13 @@ on:
     types: [published]
 
 env:
-  PYTHON_VERSION: "3.11"
+  PYTHON_VERSION: "3.12"
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+
+permissions:
+  contents: read
+  packages: write
 
 jobs:
   # ---------------------------------------------------------------------------
@@ -20,6 +24,7 @@ jobs:
   lint:
     name: Lint & Type Check
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -28,17 +33,22 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements-ci.txt
 
-      - name: Install linting tools
+      - name: Install the same dependencies the tests use
         run: |
-          pip install --upgrade pip
-          pip install ruff mypy
+          python -m pip install --upgrade pip
+          pip install -r requirements-ci.txt
+          pip install ruff==0.17.1 mypy==2.4.0
 
       - name: Run ruff (linting)
         run: ruff check src/ tests/ scripts/
 
       - name: Run mypy (type checking)
-        run: mypy src/ --ignore-missing-imports --no-strict-optional
+        # --explicit-package-bases is required because modules import both as
+        # `src.x` and as top-level packages from scripts/.
+        run: mypy src/ --ignore-missing-imports --no-strict-optional --explicit-package-bases
 
   # ---------------------------------------------------------------------------
   # Security Scan
@@ -46,11 +56,14 @@ jobs:
   security:
     name: Security Scan
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Run pip-audit (dependency vulnerabilities)
+        id: audit
+        continue-on-error: true
         run: |
           pip install pip-audit
           pip-audit -r requirements.txt --desc on
@@ -59,13 +72,21 @@ jobs:
         run: |
           pip install bandit
           bandit -r src/ -f json -o bandit-report.json || true
-          
+
       - name: Upload bandit report
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: bandit-report
           path: bandit-report.json
+          if-no-files-found: ignore
+
+      - name: Fail if vulnerabilities were found
+        if: steps.audit.outcome == 'failure'
+        run: |
+          echo "pip-audit found vulnerabilities. Upgrade the pinned versions"
+          echo "in requirements.txt; this check is blocking again once fixed."
+          exit 1
 
   # ---------------------------------------------------------------------------
   # Tests
@@ -73,16 +94,12 @@ jobs:
   test:
     name: Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     services:
       qdrant:
         image: qdrant/qdrant:latest
         ports:
           - 6333:6333
-        options: >-
-          --health-cmd="wget -q --spider http://localhost:6333/health"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -91,26 +108,43 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements-ci.txt
 
       - name: Install dependencies
         run: |
-          pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pytest httpx pytest-asyncio
+          python -m pip install --upgrade pip
+          pip install -r requirements-ci.txt
+
+      - name: Wait for Qdrant
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:6333/readyz >/dev/null; then
+              echo "Qdrant is ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Qdrant did not become ready" >&2
+          docker ps -a
+          exit 1
 
       - name: Run tests
         env:
           QDRANT_URL: http://localhost:6333
           EMBEDDING_MODEL: hash-dev
+          # Test-only key: the suite asserts 401 without it.
+          SANAD_API_KEYS: demo-key-123
         run: python -m pytest tests/ -v --tb=short
 
-      - name: Upload coverage
+      - name: Upload test artifacts
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: test-results
           path: |
             .pytest_cache/
+          if-no-files-found: ignore
 
   # ---------------------------------------------------------------------------
   # Docker Build
@@ -118,8 +152,12 @@ jobs:
   docker:
     name: Build Docker Image
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     needs: [lint, security, test]
-    if: github.event_name == 'push' || github.event_name == 'release'
+    # Publishing an image on every commit wastes registry storage and turns
+    # unrelated red builds into a deploy signal. Build+push only on releases;
+    # ordinary pushes are covered by lint, security and the 86-test suite.
+    if: github.event_name == 'release'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -141,13 +179,13 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=ref,event=branch
-            type=ref,event=pr
+            type=ref,event=tag
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           push: true
@@ -162,6 +200,7 @@ jobs:
   deploy:
     name: Deploy to Production
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: [docker]
     if: github.event_name == 'release'
     environment: production

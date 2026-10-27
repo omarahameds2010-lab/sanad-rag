@@ -1,0 +1,14 @@
+# Keep the Docker build context small and deterministic.
+.venv/
+.git/
+.github/
+**/__pycache__/
+**/*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+tests/
+frontend/
+data/qdrant_local/
+data/*.db
+*.log

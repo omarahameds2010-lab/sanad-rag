@@ -16,6 +16,8 @@ source .venv/bin/activate
 ```bash
 pip install -r requirements.txt
 ```
+For tests, lint and type checks use `pip install -r requirements-dev.txt`
+instead (it includes the runtime pins plus pytest/ruff/mypy/pip-audit).
 
 ## 4. Start the vector store (Qdrant)
 ```bash
@@ -27,12 +29,19 @@ Create a `.env` file (never commit this — it's already in `.gitignore`):
 ```
 OPENAI_API_KEY=your_key_here_only_if_testing_the_openai_comparison_arm
 QDRANT_URL=http://localhost:6333
+SANAD_API_KEYS=replace-with-a-long-random-key
 ```
+`SANAD_API_KEYS` is a comma-separated allow-list. If it is unset the API
+runs **without authentication** (dev fail-open), so any shared or public
+deployment must set it.
 
 ## 6. Run the tests to confirm everything works
 ```bash
-python -m pytest tests/ -v
+EMBEDDING_MODEL=hash-dev python -m pytest tests/ -v
 ```
+Tests read the API key allow-list from `.env`; without `SANAD_API_KEYS`
+the five unauthenticated-request tests fail by design (the app is in
+dev fail-open mode and returns 200 instead of 401).
 
 ## 7. Run the pipeline (once ingestion/retrieval scripts exist in later phases)
 ```bash

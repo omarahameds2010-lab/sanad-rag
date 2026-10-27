@@ -1,0 +1,17 @@
+﻿# Minimal CI install.
+# torch / sentence-transformers are deliberately absent: every import of
+# them in src/ is lazy, so `EMBEDDING_MODEL=hash-dev` tests run without a
+# 2 GB download. Real-embedding runs happen on a dev host and are recorded
+# in docs/DEV_BENCHMARKS.md instead of CI.
+fastapi==0.142.2
+uvicorn[standard]==0.54.0
+pydantic==2.13.5
+python-dotenv==1.2.4
+starlette==1.3.1
+qdrant-client==1.19.1
+openai==3.26.0
+anthropic==1.11.0
+google-genai==2.29.0
+rank-bm25==0.2.2
+pytest==9.1.1
+httpx==0.28.1
