@@ -4,35 +4,34 @@ This module coordinates retrieval, LLM evaluation, and validation.
 """
 
 from time import perf_counter
-from typing import Optional
+from typing import Any
 from uuid import uuid4
 
-from src.evaluation.schemas import (
-    EvaluationRequest,
-    EvaluationResponse,
-    EvaluationConfigRequest,
-    GradingConfigRequest,
-    CriterionResponse,
-    EvidenceType,
+from src.embeddings.base import EmbeddingModel
+from src.evaluation.prompts import (
+    build_context_from_chunks,
+    build_evaluation_prompt,
+    parse_llm_evaluation_output,
 )
 from src.evaluation.rubric import (
-    GradingConfig,
     Criterion,
     CriterionResult,
     EvaluationResult,
+    GradingConfig,
+)
+from src.evaluation.schemas import (
+    EvaluationRequest,
+    EvaluationResponse,
+    GradingConfigRequest,
 )
 from src.evaluation.validation import (
-    validate_evaluation,
-    aggregate_scores,
     to_criterion_responses,
+    validate_evaluation,
 )
-from src.evaluation.prompts import build_evaluation_prompt, parse_llm_evaluation_output, build_context_from_chunks
-from src.embeddings.base import EmbeddingModel
 from src.generation.llm_client import LLMClient
-from src.retrieval.query_pipeline import answer_question
+from src.ingestion.normalize import normalize_for_retrieval
 from src.retrieval.reranker import CrossEncoderReranker
 from src.retrieval.vector_store import collection_for_chunker, get_client
-from src.ingestion.normalize import normalize_for_retrieval
 
 
 class RuntimeEvaluator:
@@ -45,7 +44,7 @@ class RuntimeEvaluator:
         self,
         embedding_model: EmbeddingModel,
         primary_llm: LLMClient,
-        fallback_llm: Optional[LLMClient] = None,
+        fallback_llm: LLMClient | None = None,
     ):
         self.embedding_model = embedding_model
         self.primary_llm = primary_llm
@@ -54,7 +53,7 @@ class RuntimeEvaluator:
     def evaluate(
         self,
         request: EvaluationRequest,
-        reranker: Optional[CrossEncoderReranker] = None,
+        reranker: CrossEncoderReranker | None = None,
     ) -> EvaluationResponse:
         """
         Evaluate a single student submission.
@@ -92,8 +91,8 @@ class RuntimeEvaluator:
         prompt = build_evaluation_prompt(
             question_text=request.question.get("text", ""),
             student_answer=request.student_answer.get("text", ""),
-            grading=self._to_grading_config(request.grading),
-            context=build_context_from_chunks(context_chunks),
+            grading=grading,
+            context=context,
         )
 
         # Generate evaluation via LLM
@@ -149,33 +148,24 @@ class RuntimeEvaluator:
         )
 
     def _to_grading_config(self, request_grading: GradingConfigRequest) -> GradingConfig:
-        """Convert request schema to internal GradingConfig."""
-        criteria = [
-            type("Criterion", (), {"id": c.id, "description": c.description, "max_score": c.max_score})()
-            for c in request_grading.criteria
-        ]
-        
-        # Use a simple dict-like object that mimics GradingConfig interface
-        class SimpleGradingConfig:
-            def __init__(self, ref, max_s, version, criteria_list):
-                self.reference_answer = ref
-                self.max_score = max_s
-                self.rubric_version = version
-                self.criteria = criteria_list
-                self._criteria = {c.id: c for c in criteria_list}
-            
-            def get_criterion_ids(self):
-                return set(self._criteria.keys())
-            
-            def get_criterion(self, cid):
-                return self._criteria.get(cid)
-        
-        return SimpleGradingConfig(
-            request_grading.reference_answer,
-            request_grading.max_score,
-            request_grading.rubric_version,
-            [type("C", (), {"id": c.id, "description": c.description, "max_score": c.max_score})() 
-             for c in request_grading.criteria]
+        """Convert the request schema to the validated internal rubric model.
+
+        GradingConfigRequest already enforces sum(criteria) == max_score, so
+        this reconstruction is safe and keeps one rubric type across the code
+        base instead of a duck-typed stand-in.
+        """
+        return GradingConfig(
+            reference_answer=request_grading.reference_answer,
+            max_score=request_grading.max_score,
+            rubric_version=request_grading.rubric_version,
+            criteria=[
+                Criterion(
+                    id=c.id,
+                    description=c.description,
+                    max_score=c.max_score,
+                )
+                for c in request_grading.criteria
+            ],
         )
 
     def _retrieve_context(
@@ -189,11 +179,8 @@ class RuntimeEvaluator:
         Retrieve relevant context chunks for evaluation.
         Filters by tenant_id and authorized source_ids.
         """
-        from src.retrieval.hybrid import hybrid_retrieve
-        from src.retrieval.vector_store import search as semantic_search, collection_for_chunker
         from src.retrieval.bm25_index import bm25_search
-        from src.retrieval.hybrid import RRF_K
-        from src.retrieval.vector_store import get_client
+        from src.retrieval.vector_store import search as semantic_search
         
         is_hierarchical = request.config.chunker_type.value == "hierarchical"
         
@@ -219,7 +206,12 @@ class RuntimeEvaluator:
             
             client = get_client()
             # Apply tenant + source filter
-            from qdrant_client.models import Filter, FieldCondition, MatchValue, MatchAny
+            from qdrant_client.models import (
+                FieldCondition,
+                Filter,
+                MatchAny,
+                MatchValue,
+            )
             tenant_filter = Filter(
                 must=[
                     FieldCondition(key="tenant_id", match=MatchValue(value=request.tenant_id)),
@@ -240,8 +232,8 @@ class RuntimeEvaluator:
             )
             
             # Fuse with RRF
-            fused_scores = {}
-            payload_by_id = {}
+            fused_scores: dict[str, float] = {}
+            payload_by_id: dict[str, dict] = {}
             
             for rank, result in enumerate(semantic_results):
                 cid = result["chunk_id"]
@@ -269,11 +261,11 @@ class RuntimeEvaluator:
         reranker,
     ) -> list[dict]:
         """Hierarchical retrieval with tenant and source filtering."""
-        from src.retrieval.vector_store import search as semantic_search, collection_for_chunker
+        from qdrant_client.models import FieldCondition, Filter, MatchAny, MatchValue
+
         from src.retrieval.bm25_index import bm25_search
         from src.retrieval.hybrid import RRF_K
-        from src.retrieval.vector_store import get_client
-        from qdrant_client.models import Filter, FieldCondition, MatchValue, MatchAny
+        from src.retrieval.vector_store import search as semantic_search
         
         client = get_client()
         dims = self.embedding_model.dimensions
@@ -281,7 +273,7 @@ class RuntimeEvaluator:
         child_collection = collection_for_chunker("hierarchical_children", dims)
         
         # Build filter for tenant + source
-        filter_conditions = [
+        filter_conditions: list[Any] = [
             FieldCondition(key="tenant_id", match=MatchValue(value=tenant_id))
         ]
         if source_ids:
@@ -302,8 +294,8 @@ class RuntimeEvaluator:
         )
         
         # RRF fusion
-        fused_scores = {}
-        payload_by_id = {}
+        fused_scores: dict[str, float] = {}
+        payload_by_id: dict[str, dict] = {}
         
         for rank, result in enumerate(semantic_results):
             cid = result["chunk_id"]
@@ -323,7 +315,7 @@ class RuntimeEvaluator:
         
         # Map to parents. Keyed by (source_id, parent_id) because
         # parent_ids restart at parent_0 inside every source document.
-        parent_map = {}
+        parent_map: dict[tuple[str, str], dict] = {}
         for child in top_children:
             parent_id = child.get("parent_id")
             child_source_id = child.get("source_id", "")
@@ -380,7 +372,6 @@ class RuntimeEvaluator:
 
     def _generate_evaluation(self, prompt: str, context_chunks: list[dict]) -> dict:
         """Generate evaluation using primary LLM with structured output."""
-        from src.evaluation.prompts import parse_llm_evaluation_output
         
         # Use evaluation prompt directly (already contains full instruction)
         raw_output = self.primary_llm.generate_evaluation(prompt, None)
@@ -391,7 +382,6 @@ class RuntimeEvaluator:
 
     def _generate_evaluation_fallback(self, prompt: str, context_chunks: list[dict]) -> dict:
         """Fallback generation using fallback LLM."""
-        from src.evaluation.prompts import parse_llm_evaluation_output
         raw_output = self.fallback_llm.generate_evaluation(prompt, None)
         return parse_llm_evaluation_output(raw_output)
 
@@ -422,7 +412,6 @@ class RuntimeEvaluator:
         )
         
         # Validate
-        from src.evaluation.validation import validate_evaluation
         from src.evaluation.rubric import GradingConfig
         
         # Create GradingConfig for validation

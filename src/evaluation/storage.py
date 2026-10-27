@@ -9,7 +9,7 @@ more transparent than adding an ORM dependency.
 
 import sqlite3
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 DEFAULT_DB_PATH = Path("data/sanad.db")
@@ -101,7 +101,7 @@ def record_ingested_document(
         conn.execute(
             "INSERT OR REPLACE INTO ingested_documents "
             "(source_id, ingested_at, n_chunks, embedding_model) VALUES (?, ?, ?, ?)",
-            (source_id, datetime.now(timezone.utc).isoformat(), n_chunks, embedding_model),
+            (source_id, datetime.now(UTC).isoformat(), n_chunks, embedding_model),
         )
 
 
@@ -138,7 +138,7 @@ def record_evaluation_run(
             (
                 run_id,
                 config_name,
-                datetime.now(timezone.utc).isoformat(),
+                datetime.now(UTC).isoformat(),
                 metrics.get("n_examples"),
                 metrics.get("precision_at_k"),
                 metrics.get("recall_at_k"),

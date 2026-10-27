@@ -10,17 +10,15 @@ Provides:
 """
 
 import os
-import time
 import re
-from typing import Optional
+import time
 from functools import lru_cache
 
-from fastapi import Request, HTTPException, Depends
+from fastapi import Depends, HTTPException, Request
 from fastapi.security import APIKeyHeader
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 from starlette.types import ASGIApp
-
 
 # =============================================================================
 # API Key Authentication
@@ -50,8 +48,8 @@ def clear_api_keys_cache():
 
 async def verify_api_key(
     request: Request,
-    api_key: Optional[str] = Depends(api_key_header),
-) -> Optional[str]:
+    api_key: str | None = Depends(api_key_header),
+) -> str | None:
     """
     Verify API key if authentication is enabled.
     Returns the API key if valid, None if auth is disabled.
@@ -112,7 +110,7 @@ class RateLimiter:
         self,
         requests_per_minute: int = 60,
         burst: int = 10,
-        exempt_ips: Optional[set[str]] = None,
+        exempt_ips: set[str] | None = None,
     ):
         self.buckets: dict[str, TokenBucket] = {}
         self.requests_per_minute = requests_per_minute
@@ -160,7 +158,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     def __init__(
         self,
         app: ASGIApp,
-        limiter: Optional[RateLimiter] = None,
+        limiter: RateLimiter | None = None,
     ):
         super().__init__(app)
         self.limiter = limiter or rate_limiter

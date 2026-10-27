@@ -11,6 +11,7 @@ identical between dev and production:
 
 import os
 import uuid
+from typing import Any
 
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, PointStruct, VectorParams
@@ -47,7 +48,7 @@ def build_scope_filter(
     """
     from qdrant_client.models import FieldCondition, Filter, MatchAny, MatchValue
 
-    conditions = []
+    conditions: list[Any] = []
     if source_ids:
         conditions.append(FieldCondition(key="source_id", match=MatchAny(any=source_ids)))
     if branch:
@@ -122,7 +123,6 @@ def search(
     collection: str = COLLECTION_NAME,
     query_filter=None,
 ) -> list[dict]:
-    from qdrant_client.models import Filter
     
     results = client.query_points(
         collection_name=collection, query=query_vector, limit=top_k, query_filter=query_filter

@@ -1,18 +1,16 @@
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-import pytest
 
 from src.chunking.hierarchical_chunker import (
-    hierarchical_chunk_text,
-    build_parent_chunks,
-    build_child_chunks,
-    ParentChunk,
     ChildChunk,
+    ParentChunk,
+    build_child_chunks,
+    build_parent_chunks,
+    hierarchical_chunk_text,
 )
-
 
 ARABIC_TEXT = """النحو العربي علم يدرس أحكام الكلمة من حيث الإعراب والبناء.
 الإعراب هو تغير أواخر الكلم بتغير العوامل الداخلة عليها.

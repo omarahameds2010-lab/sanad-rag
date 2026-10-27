@@ -63,6 +63,7 @@ class OpenAIEmbedding(EmbeddingModel):
 
     def embed(self, texts: list[str]) -> list[list[float]]:
         import os
+
         from openai import OpenAI
 
         client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])

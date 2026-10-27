@@ -74,16 +74,16 @@ def build_sarf() -> dict[str, list[str]]:
     part2_output = _gen_sarf_rows(part2_rows)
 
     # Prepend section headers
-    part1_lines = ["## بنك جداول التصريف المولد (الجزء الأول)"] + part1_output
-    part2_lines = ["## بنك جداول التصريف المولد (الجزء الثاني)"] + part2_output
+    part1_lines = ["## بنك جداول التصريف المولد (الجزء الأول)", *part1_output]
+    part2_lines = ["## بنك جداول التصريف المولد (الجزء الثاني)", *part2_output]
 
     # Generate output lines for each part
     part1_output = _gen_sarf_rows(part1_rows)
     part2_output = _gen_sarf_rows(part2_rows)
 
     # Prepend section headers
-    part1_lines = ["## بنك جداول التصريف المولد (الجزء الأول)"] + part1_output
-    part2_lines = ["## بنك جداول التصريف المولد (الجزء الثاني)"] + part2_output
+    part1_lines = ["## بنك جداول التصريف المولد (الجزء الأول)", *part1_output]
+    part2_lines = ["## بنك جداول التصريف المولد (الجزء الثاني)", *part2_output]
 
     return {
         "gen_sarf_tables_p1.txt": part1_lines,

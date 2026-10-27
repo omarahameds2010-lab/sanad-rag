@@ -18,8 +18,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.retrieval.vector_store import delete_by_sources
 from src.evaluation.storage import delete_ingested_document
+from src.retrieval.vector_store import delete_by_sources
 
 # Audited 2026-10-13 by reading chunk text: padding, not knowledge.
 FILLER_SOURCES = (
@@ -37,8 +37,9 @@ def main() -> None:
 
     if args.dry_run:
         # Count without deleting: scroll per collection directly.
-        from src.retrieval.vector_store import get_client, COLLECTION_NAME
         from qdrant_client.models import FieldCondition, Filter, MatchAny
+
+        from src.retrieval.vector_store import COLLECTION_NAME, get_client
 
         client = get_client()
         total = 0

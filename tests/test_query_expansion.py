@@ -1,15 +1,13 @@
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-import pytest
 
 from src.retrieval.query_expansion import (
     expand_query,
     expand_with_synonyms,
     expand_with_templates,
-    multi_query_retrieve,
 )
 
 

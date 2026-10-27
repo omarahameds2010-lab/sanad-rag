@@ -1,5 +1,5 @@
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -8,12 +8,11 @@ from fastapi.testclient import TestClient
 
 from src.api.main import app
 from src.security import (
-    sanitize_input,
-    detect_injection_attempt,
-    get_valid_api_keys,
-    verify_api_key,
     RateLimiter,
     clear_api_keys_cache,
+    detect_injection_attempt,
+    get_valid_api_keys,
+    sanitize_input,
 )
 
 
@@ -60,7 +59,7 @@ class TestInjectionDetection:
 
     def test_detects_union_injection(self):
         text = "' UNION SELECT password FROM users --"
-        suspicious, patterns = detect_injection_attempt(text)
+        suspicious, _patterns = detect_injection_attempt(text)
         assert suspicious
 
     def test_detects_xss_script(self):
@@ -71,7 +70,7 @@ class TestInjectionDetection:
 
     def test_detects_javascript_protocol(self):
         text = "javascript:alert(1)"
-        suspicious, patterns = detect_injection_attempt(text)
+        suspicious, _patterns = detect_injection_attempt(text)
         assert suspicious
 
     def test_detects_path_traversal(self):

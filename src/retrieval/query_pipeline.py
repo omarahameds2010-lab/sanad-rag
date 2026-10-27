@@ -7,21 +7,21 @@ Phase 8 update: supports parent-child (hierarchical) retrieval and query expansi
 """
 
 from time import perf_counter
-from typing import Optional
+from typing import Any
 
-from src.ingestion.normalize import normalize_for_retrieval
 from src.embeddings.base import EmbeddingModel
-from src.retrieval.hybrid import hybrid_retrieve
-from src.retrieval.reranker import Reranker, NoOpReranker
-from src.retrieval.vector_store import collection_for_chunker, get_client
 from src.generation.llm_client import LLMClient
+from src.ingestion.normalize import normalize_for_retrieval
+from src.retrieval.hybrid import hybrid_retrieve
+from src.retrieval.reranker import Reranker
+from src.retrieval.vector_store import collection_for_chunker, get_client
 
 
 def retrieve_passages(
     question: str,
     embedding_model: EmbeddingModel,
     top_k: int = 5,
-    reranker: Optional[Reranker] = None,
+    reranker: Reranker | None = None,
     chunker_type: str = "arabic",
     enable_query_expansion: bool = False,
     source_ids: list[str] | None = None,
@@ -105,9 +105,9 @@ def answer_question(
     question: str,
     embedding_model: EmbeddingModel,
     primary_llm: LLMClient,
-    fallback_llm: Optional[LLMClient] = None,
+    fallback_llm: LLMClient | None = None,
     top_k: int = 5,
-    reranker: Optional[Reranker] = None,
+    reranker: Reranker | None = None,
     chunker_type: str = "arabic",
     enable_query_expansion: bool = False,
     source_ids: list[str] | None = None,
@@ -173,7 +173,7 @@ def _hierarchical_retrieve(
     normalized_question: str,
     embedding_model: EmbeddingModel,
     top_k: int = 5,
-    reranker: Optional[Reranker] = None,
+    reranker: Reranker | None = None,
     query_filter=None,
     payload_filter=None,
 ) -> list[dict]:
@@ -184,9 +184,9 @@ def _hierarchical_retrieve(
     3. Deduplicate parents (keep highest-scoring child per parent)
     4. Return parent chunks for LLM context
     """
-    from src.retrieval.vector_store import search as semantic_search
     from src.retrieval.bm25_index import bm25_search
     from src.retrieval.hybrid import RRF_K
+    from src.retrieval.vector_store import search as semantic_search
     
     client = get_client()
     dims = embedding_model.dimensions
@@ -283,10 +283,10 @@ def _fetch_parent_by_id(
     source_id scoping is required because parent_ids restart at parent_0
     inside every source document.
     """
-    from qdrant_client.models import Filter, FieldCondition, MatchValue
+    from qdrant_client.models import FieldCondition, Filter, MatchValue
 
     try:
-        conditions = [FieldCondition(key="parent_id", match=MatchValue(value=parent_id))]
+        conditions: list[Any] = [FieldCondition(key="parent_id", match=MatchValue(value=parent_id))]
         if source_id:
             conditions.append(FieldCondition(key="source_id", match=MatchValue(value=source_id)))
         results = client.scroll(
@@ -308,7 +308,7 @@ def _retrieve_with_expansion(
     embedding_model: EmbeddingModel,
     top_k: int = 5,
     chunker_type: str = "arabic",
-    reranker: Optional[Reranker] = None,
+    reranker: Reranker | None = None,
     query_filter=None,
     payload_filter=None,
 ) -> list[dict]:
@@ -333,7 +333,7 @@ def _hierarchical_retrieve_with_expansion(
     question: str,
     embedding_model: EmbeddingModel,
     top_k: int = 5,
-    reranker: Optional[Reranker] = None,
+    reranker: Reranker | None = None,
     query_filter=None,
     payload_filter=None,
 ) -> list[dict]:

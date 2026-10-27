@@ -3,19 +3,16 @@ Runtime evaluation API endpoints.
 POST /evaluate/submission — single-submission essay grading
 """
 
-from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
 
-from src.api.deps import _get_embedding_model, _get_llm_clients, _check_qdrant, _check_db
+from src.api.deps import _get_embedding_model, _get_llm_clients
+from src.evaluation.runtime_evaluator import RuntimeEvaluator
 from src.evaluation.schemas import (
     EvaluationRequest,
     EvaluationResponse,
 )
-from src.evaluation.runtime_evaluator import RuntimeEvaluator
 from src.retrieval.reranker import CrossEncoderReranker
 from src.security import verify_api_key
-
 
 router = APIRouter(prefix="/evaluate", tags=["Evaluation"])
 
@@ -87,7 +84,7 @@ async def evaluate_submission(
                 "message": str(e),
             }
         )
-    except Exception as e:
+    except Exception:
         # Internal errors
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -107,7 +104,7 @@ async def evaluation_health(
     api_key: str = Depends(verify_api_key),
 ) -> dict:
     """Check evaluation service dependencies."""
-    from src.api.main import _check_qdrant, _check_db
+    from src.api.main import _check_db, _check_qdrant
     
     qdrant_ok = _check_qdrant()
     db_ok = _check_db()

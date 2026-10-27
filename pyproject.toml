@@ -1,0 +1,24 @@
+[project]
+name = "sanad-rag"
+version = "0.4.0"
+requires-python = ">=3.11"
+
+[tool.ruff]
+target-version = "py311"
+# E4/E7/E9: syntax-adjacent errors. F: unused imports/vars (real dead code).
+# UP: safe pyupgrade for 3.11+. I: import sorting. RUF: unambiguous modernizations.
+# Deliberately NOT enabled: S (bandit covers src/ separately in CI; S101 would
+# flag every test assert) and BLE (this codebase uses broad except for the
+# documented fallback reliability strategy — see docs/architecture.md §6).
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "UP", "I", "RUF"]
+# RUF001/2/3 flag Arabic letters as "confusable" with Latin ones. In an
+# Arabic-first corpus those characters are the content, not a typo.
+ignore = ["RUF001", "RUF002", "RUF003"]
+
+[tool.ruff.lint.per-file-ignores]
+# load_dotenv() runs before the project imports on purpose: src.api.deps and
+# src.security read their configuration at import time.
+"src/api/main.py" = ["E402"]

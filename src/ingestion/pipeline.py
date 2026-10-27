@@ -13,19 +13,21 @@ Phase 8 update: supports parent-child (hierarchical) chunking for decoupled
 retrieval precision and generation context quality.
 """
 
-from typing import Callable, Any
-from src.ingestion.normalize import clean_for_display, normalize_for_retrieval
+from collections.abc import Callable
+
 from src.chunking.arabic_chunker import chunk_text as arabic_chunk_text
 from src.chunking.baseline_chunker import chunk_text as baseline_chunk_text
-from src.chunking.hierarchical_chunker import hierarchical_chunk_text, ParentChunk, ChildChunk
+from src.chunking.hierarchical_chunker import hierarchical_chunk_text
 from src.embeddings.base import EmbeddingModel
 from src.ingestion.branches import infer_branch
+from src.ingestion.normalize import clean_for_display, normalize_for_retrieval
 from src.retrieval.vector_store import (
-    get_client,
-    ensure_collection,
-    upsert_chunks,
     collection_for_chunker,
+    ensure_collection,
+    get_client,
+    upsert_chunks,
 )
+
 # NOTE: record_ingested_document is imported lazily inside functions
 # (not at module top) to avoid a circular import: this module is imported
 # by src.evaluation.harness, which is re-exported from src.evaluation/__init__,
@@ -49,7 +51,9 @@ def get_chunker(chunker_type: str = "arabic") -> Callable:
     if chunker_type == "hierarchical":
         # For hierarchical, we return a wrapper that provides parent chunks
         # The actual parent-child logic is handled in ingest_document
-        from src.chunking.hierarchical_chunker import chunk_text as hierarchical_chunk_text_compat
+        from src.chunking.hierarchical_chunker import (
+            chunk_text as hierarchical_chunk_text_compat,
+        )
         return hierarchical_chunk_text_compat
     return arabic_chunk_text
 
@@ -151,7 +155,6 @@ def _ingest_hierarchical(
     - Child chunks are indexed in Qdrant for retrieval
     - Parent chunks are stored in a separate collection for LLM context lookup
     """
-    from src.retrieval.vector_store import COLLECTION_NAME
     
     parents, children = hierarchical_chunk_text(
         display_text,

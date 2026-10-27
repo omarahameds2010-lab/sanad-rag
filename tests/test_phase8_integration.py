@@ -1,17 +1,16 @@
 import os
 import sys
 import uuid
-import shutil
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import pytest
 
 from src.embeddings.base import HashEmbedding
+from src.generation.llm_client import FakeLLM
 from src.ingestion.pipeline import ingest_document
 from src.retrieval.query_pipeline import answer_question
 from src.retrieval.vector_store import get_client, reset_client_for_testing
-from src.generation.llm_client import FakeLLM
 
 
 @pytest.fixture

@@ -3,24 +3,25 @@ Pydantic schemas for runtime evaluation API.
 These define the contract between LMS and SANAD.
 """
 
-from enum import Enum
-from typing import Optional, Literal
-from pydantic import BaseModel, Field, model_validator
+from enum import StrEnum
+from typing import Literal
 from uuid import UUID
 
+from pydantic import BaseModel, Field, model_validator
 
-class QuestionType(str, Enum):
+
+class QuestionType(StrEnum):
     ESSAY = "ESSAY"
     SHORT_ANSWER = "SHORT_ANSWER"
 
 
-class EvidenceType(str, Enum):
+class EvidenceType(StrEnum):
     SUPPORTED = "SUPPORTED"
     PARTIAL = "PARTIAL"
     ABSENT = "ABSENT"
 
 
-class ChunkerType(str, Enum):
+class ChunkerType(StrEnum):
     ARABIC = "arabic"
     BASELINE = "baseline"
     HIERARCHICAL = "hierarchical"
@@ -51,7 +52,7 @@ class GradingConfigRequest(BaseModel):
 
 class KnowledgeConfigRequest(BaseModel):
     source_ids: list[str] = Field(default_factory=list, max_length=50)
-    version: Optional[str] = Field(default=None, max_length=50)
+    version: str | None = Field(default=None, max_length=50)
 
 
 class EvaluationConfigRequest(BaseModel):
@@ -78,7 +79,7 @@ class CriterionResponse(BaseModel):
     criterion_id: str
     earned: int
     max: int
-    evidence: Optional[str] = None
+    evidence: str | None = None
     evidence_type: EvidenceType
     feedback_ar: str
 
@@ -107,4 +108,4 @@ class EvaluationResponse(BaseModel):
 class EvaluationErrorResponse(BaseModel):
     error_code: str
     message: str
-    details: Optional[dict] = None
+    details: dict | None = None

@@ -7,9 +7,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import pytest
 
 from src.embeddings.base import HashEmbedding
+from src.generation.llm_client import FakeLLM
 from src.ingestion.pipeline import ingest_document
 from src.retrieval.query_pipeline import answer_question, retrieve_passages
-from src.generation.llm_client import FakeLLM
 
 
 @pytest.fixture
@@ -48,7 +48,11 @@ def test_answer_question_returns_full_contract(isolated_qdrant):
 
 def test_answer_question_with_no_ingested_data_does_not_crash(isolated_qdrant):
     embedding_model = HashEmbedding(dims=32)
-    from src.retrieval.vector_store import get_client, ensure_collection, collection_for_chunker
+    from src.retrieval.vector_store import (
+        collection_for_chunker,
+        ensure_collection,
+        get_client,
+    )
 
     # ensure the collection exists (empty) so retrieval has something to
     # query against, mirroring what /health checks for
@@ -127,7 +131,11 @@ def test_retrieve_passages_matches_answer_question_ranking(isolated_qdrant):
 
 def test_retrieve_passages_empty_index_returns_empty(isolated_qdrant):
     embedding_model = HashEmbedding(dims=32)
-    from src.retrieval.vector_store import get_client, ensure_collection, collection_for_chunker
+    from src.retrieval.vector_store import (
+        collection_for_chunker,
+        ensure_collection,
+        get_client,
+    )
 
     ensure_collection(
         get_client(), dims=embedding_model.dimensions, collection=collection_for_chunker("arabic", embedding_model.dimensions)
@@ -217,11 +225,15 @@ def test_source_ids_filter_scopes_to_documents(isolated_qdrant):
 
 
 def test_prune_removes_source_points_and_records(isolated_qdrant, tmp_path):
-    from src.retrieval.vector_store import delete_by_sources, get_client, collection_for_chunker
     from src.evaluation.storage import (
         delete_ingested_document,
-        record_ingested_document,
         get_connection,
+        record_ingested_document,
+    )
+    from src.retrieval.vector_store import (
+        collection_for_chunker,
+        delete_by_sources,
+        get_client,
     )
 
     embedding_model = HashEmbedding(dims=32)

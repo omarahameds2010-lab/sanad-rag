@@ -77,7 +77,7 @@ def generate_supreme_knowledge_base():
 
             # 3. Inject Custom Graduated Exam Question Bank (10 difficulty levels) to feed Evaluation System
             all_lines.append(
-                f"   [Linguistic Exam Question]: Extract the rhetorical or grammatical resource from the previous paragraph and parse it completely.\n"
+                "   [Linguistic Exam Question]: Extract the rhetorical or grammatical resource from the previous paragraph and parse it completely.\n"
             )
             all_lines.append(
                 "=====================================================================\n"

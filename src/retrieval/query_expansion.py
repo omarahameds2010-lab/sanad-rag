@@ -17,9 +17,7 @@ forms of the same root. Expansion increases recall without sacrificing precision
 because RRF naturally down-weights lower-ranked results from expanded queries.
 """
 
-from typing import Optional
 from src.ingestion.normalize import normalize_for_retrieval, strip_diacritics
-
 
 # Common Arabic synonyms and morphological variants for question expansion
 # These are hand-curated for high-impact, low-noise expansions
@@ -30,8 +28,11 @@ ARABIC_SYNONYMS = {
     "أين": ["في أي مكان", "مكان"],
     "كيف": ["بأي طريقة", "طريقة"],
     "لماذا": ["لأي سبب", "سبب"],
-    "من": ["أي شخص", "شخص"],
-    
+    # NOTE: "من" is both an interrogative (who) and a preposition (from).
+    # Keep one merged entry — a second dict key would silently win and drop
+    # one of the two senses from expansion.
+    "من": ["أي شخص", "شخص", "من عند", "ابتداء من"],
+
     # Common verbs - root variations
     "يكون": ["يوجد", "يتواجد", "يحصل"],
     "كان": ["أصبح", "صار", "وجد"],
@@ -68,7 +69,6 @@ ARABIC_SYNONYMS = {
     # Prepositions/particles
     "في": ["داخل", "وسط", "أثناء"],
     "على": ["فوق", "أعلى", "على"],
-    "من": ["من عند", "من جهت", "ابتداء من"],
     "إلى": ["نحو", "باتجاه", "حتى"],
     "مع": ["بجانب", "مرافق", "معا"],
 }
@@ -202,7 +202,7 @@ def multi_query_retrieve(
     Returns:
         Fused and ranked results
     """
-    from src.retrieval.hybrid import hybrid_retrieve, RRF_K
+    from src.retrieval.hybrid import RRF_K, hybrid_retrieve
     from src.retrieval.vector_store import collection_for_chunker
     
     all_results: dict[str, float] = {}

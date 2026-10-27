@@ -15,18 +15,17 @@ Two things this module deliberately keeps separate:
 
 import json
 import uuid
-from pathlib import Path
 
 from src.embeddings.base import EmbeddingModel
-from src.generation.llm_client import LLMClient
-from src.ingestion.pipeline import ingest_document
-from src.retrieval.query_pipeline import answer_question
 from src.evaluation.metrics import (
     GoldenExample,
     RetrievalResult,
     evaluate_retrieval,
 )
 from src.evaluation.storage import record_evaluation_run
+from src.generation.llm_client import LLMClient
+from src.ingestion.pipeline import ingest_document
+from src.retrieval.query_pipeline import answer_question
 from src.retrieval.reranker import CrossEncoderReranker
 
 

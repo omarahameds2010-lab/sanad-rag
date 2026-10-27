@@ -18,8 +18,6 @@ generation context quality.
 
 import re
 from dataclasses import dataclass, field
-from typing import Optional
-from uuid import uuid4
 
 # Reuse the Arabic-aware sentence splitter from arabic_chunker
 SENTENCE_BOUNDARY = re.compile(r"(?<=[.!؟?؛۔])\s+")

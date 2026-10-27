@@ -8,9 +8,8 @@ a rewrite.
 import json
 import os
 from abc import ABC, abstractmethod
-from typing import Optional
-from pydantic import BaseModel
 
+from pydantic import BaseModel
 
 try:
     from google import genai
@@ -52,7 +51,7 @@ class LLMClient(ABC):
     def generate_evaluation(
         self,
         prompt: str,
-        response_model: Optional[type] = None,
+        response_model: type | None = None,
     ) -> str:
         """Structured essay evaluation generation — NEW contract."""
         raise NotImplementedError
@@ -135,6 +134,7 @@ class AnthropicLLM(LLMClient):
 
     def generate(self, question: str, context_chunks: list[dict]) -> GenerationResult:
         import os
+
         import anthropic
 
         client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
@@ -148,29 +148,30 @@ class AnthropicLLM(LLMClient):
             max_tokens=1000,
             messages=[{"role": "user", "content": prompt}],
         )
-        raw = response.content[0].text
+        raw = "".join(getattr(block, "text", "") for block in response.content)
         parsed = json.loads(raw)
         return GenerationResult(parsed["answer"], parsed.get("cited_chunk_ids", []))
 
     def generate_evaluation(
         self,
         prompt: str,
-        response_model: Optional[type] = None,
+        response_model: type | None = None,
     ) -> str:
         """Generate evaluation and return raw string for parsing."""
         import os
+
         import anthropic
 
         client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
         
-        # Use a simpler prompt format for evaluation (the prompt already contains full instructions)
+        # NOTE: the pinned Anthropic SDK no longer accepts `temperature` on
+        # messages.create; consistency comes from the rubric prompt instead.
         response = client.messages.create(
             model=self.name,
             max_tokens=2000,
-            temperature=0.1,  # Low temperature for consistency
             messages=[{"role": "user", "content": prompt}],
         )
-        return response.content[0].text
+        return "".join(getattr(block, "text", "") for block in response.content)
 
 
 class FakeLLM(LLMClient):
@@ -200,7 +201,7 @@ class FakeLLM(LLMClient):
     def generate_evaluation(
         self,
         prompt: str,
-        response_model: Optional[type] = None,
+        response_model: type | None = None,
     ) -> str:
         # Dev fallback: return a mock evaluation JSON string for testing
         import json
@@ -270,7 +271,7 @@ class GeminiLLM(LLMClient):
     def generate_evaluation(
         self,
         prompt: str,
-        response_model: Optional[type] = None,
+        response_model: type | None = None,
     ) -> str:
         from google.genai import types
 

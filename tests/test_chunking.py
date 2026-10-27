@@ -1,10 +1,10 @@
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from src.chunking.arabic_chunker import split_sentences, chunk_text
-from src.ingestion.normalize import strip_diacritics, normalize_for_retrieval
+from src.chunking.arabic_chunker import chunk_text, split_sentences
+from src.ingestion.normalize import normalize_for_retrieval, strip_diacritics
 
 
 def test_split_sentences_arabic_punctuation():

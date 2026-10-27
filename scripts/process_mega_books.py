@@ -4,8 +4,8 @@ Automatically shards output to stay under ingestion size limits (200KB per file)
 """
 
 import os
+
 import ebooklib
-from ebooklib import epub
 from bs4 import BeautifulSoup
 
 # Configuration

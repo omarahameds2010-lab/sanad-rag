@@ -6,9 +6,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import pytest
 
 from src.embeddings.base import HashEmbedding
-from src.generation.llm_client import FakeLLM
 from src.evaluation.harness import run_evaluation
 from src.evaluation.storage import get_evaluation_run
+from src.generation.llm_client import FakeLLM
 
 GOLDEN_PATH = os.path.join(
     os.path.dirname(__file__), "..", "data", "golden_dataset", "sample_golden.json"

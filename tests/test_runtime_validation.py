@@ -1,12 +1,12 @@
-import sys
 import os
+import sys
 from types import SimpleNamespace
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from src.embeddings.base import HashEmbedding
-from src.generation.llm_client import FakeLLM
 from src.evaluation.runtime_evaluator import RuntimeEvaluator
+from src.generation.llm_client import FakeLLM
 
 
 def make_grading():

@@ -17,7 +17,7 @@ persistent index" as a Production-tier upgrade, not an MVP requirement.
 
 from rank_bm25 import BM25Okapi
 
-from src.retrieval.vector_store import get_client, COLLECTION_NAME
+from src.retrieval.vector_store import COLLECTION_NAME, get_client
 
 
 def _tokenize(text: str) -> list[str]:
@@ -55,7 +55,7 @@ def bm25_search(question: str, top_k: int = 5, collection: str = COLLECTION_NAME
             return []
         # Rebuild the index on the in-scope corpus so ranks are computed
         # within the Explorer sub-filter, not globally.
-        idx, scoped_payloads = zip(*kept)
+        _, scoped_payloads = zip(*kept)
         bm25 = BM25Okapi([_tokenize(p.get("raw_text", "")) for p in scoped_payloads])
         corpus_payloads = list(scoped_payloads)
 

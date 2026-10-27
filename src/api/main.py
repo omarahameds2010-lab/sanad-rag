@@ -13,27 +13,27 @@ Phase 9: Security Review - Added API key auth, rate limiting, security headers, 
 from contextlib import asynccontextmanager
 from typing import Literal
 
-from fastapi import FastAPI, HTTPException, Depends, Request
+from dotenv import load_dotenv
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from dotenv import load_dotenv
 
 load_dotenv()
 
-from src.evaluation.storage import init_db
-from src.security import (
-    verify_api_key,
-    RateLimitMiddleware,
-    SecurityHeadersMiddleware,
-    get_cors_origins,
-    sanitize_input,
-    detect_injection_attempt,
-)
 from src.api.deps import (
+    _check_db,
+    _check_qdrant,
     _get_embedding_model,
     _get_llm_clients,
-    _check_qdrant,
-    _check_db,
+)
+from src.evaluation.storage import init_db
+from src.security import (
+    RateLimitMiddleware,
+    SecurityHeadersMiddleware,
+    detect_injection_attempt,
+    get_cors_origins,
+    sanitize_input,
+    verify_api_key,
 )
 
 
@@ -211,7 +211,7 @@ async def validate_input_middleware(request: Request, call_next):
             if body:
                 body_str = body.decode("utf-8")
                 # Check for injection attempts
-                suspicious, patterns = detect_injection_attempt(body_str)
+                suspicious, _ = detect_injection_attempt(body_str)
                 if suspicious:
                     # Log but don't block (could be false positive for Arabic text)
                     # In production, you might want to block or alert
@@ -252,7 +252,6 @@ def ingest(
     once running with real network/model access.
     """
     from src.ingestion.pipeline import ingest_document
-    from src.embeddings.base import HashEmbedding
 
     # Sanitize input
     clean_text = sanitize_input(request.text, max_length=200_000)

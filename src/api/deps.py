@@ -3,7 +3,11 @@ Shared dependencies for SANAD API.
 Moved here to avoid circular imports.
 """
 
-from src.embeddings.base import EmbeddingModel, HashEmbedding, SentenceTransformerEmbedding
+from src.embeddings.base import (
+    EmbeddingModel,
+    HashEmbedding,
+    SentenceTransformerEmbedding,
+)
 from src.generation.llm_client import AnthropicLLM, FakeLLM, GeminiLLM
 
 # Process-wide cache: loading a 2GB embedding model per request is slow

@@ -1,5 +1,5 @@
-import sys
 import os
+import sys
 import uuid
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -9,9 +9,8 @@ from fastapi.testclient import TestClient
 
 from src.api.main import app
 from src.evaluation.storage import (
-    DEFAULT_DB_PATH,
-    record_evaluation_run,
     get_evaluation_run,
+    record_evaluation_run,
 )
 
 # Test API key

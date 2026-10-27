@@ -9,8 +9,9 @@ BM25 score) without needing to normalize either one — you only need the
 I weight these two scores" bugs.
 """
 
-from src.retrieval.vector_store import get_client, search as semantic_search, COLLECTION_NAME
 from src.retrieval.bm25_index import bm25_search
+from src.retrieval.vector_store import COLLECTION_NAME, get_client
+from src.retrieval.vector_store import search as semantic_search
 
 RRF_K = 60  # standard RRF damping constant from the original paper
 

@@ -11,7 +11,6 @@ for different models (e.g., bge-reranker, Cohere Rerank API).
 """
 
 from abc import ABC, abstractmethod
-from typing import List
 
 
 class Reranker(ABC):
@@ -21,9 +20,9 @@ class Reranker(ABC):
     def rerank(
         self,
         question: str,
-        chunks: List[dict],
+        chunks: list[dict],
         top_k: int = 5,
-    ) -> List[dict]:
+    ) -> list[dict]:
         """
         Re-rank chunks based on their relevance to the question.
         
@@ -58,9 +57,9 @@ class CrossEncoderReranker(Reranker):
     def rerank(
         self,
         question: str,
-        chunks: List[dict],
+        chunks: list[dict],
         top_k: int = 5,
-    ) -> List[dict]:
+    ) -> list[dict]:
         if not chunks:
             return []
 
@@ -82,9 +81,9 @@ class CrossEncoderReranker(Reranker):
     def _fallback_rerank(
         self,
         question: str,
-        chunks: List[dict],
+        chunks: list[dict],
         top_k: int,
-    ) -> List[dict]:
+    ) -> list[dict]:
         """
         Simple fallback: score by term overlap between question and chunk.
         Not as good as a real cross-encoder, but better than nothing.
@@ -113,8 +112,8 @@ class NoOpReranker(Reranker):
     def rerank(
         self,
         question: str,
-        chunks: List[dict],
+        chunks: list[dict],
         top_k: int = 5,
-    ) -> List[dict]:
+    ) -> list[dict]:
         # Just return top_k without reordering
         return chunks[:top_k]

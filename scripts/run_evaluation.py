@@ -15,7 +15,7 @@ Set EMBEDDING_MODEL=multilingual-e5 and ANTHROPIC_API_KEY in your .env
 import argparse
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -78,7 +78,7 @@ def append_benchmark_result(metrics: dict, benchmark_file: str = "docs/benchmark
             f.write("|---|---|---|---|---|---|---|---|---|---|---|---|---|\n")
 
         f.write(
-            f"| {datetime.now(timezone.utc).isoformat()} | {metrics['config_name']} | "
+            f"| {datetime.now(UTC).isoformat()} | {metrics['config_name']} | "
             f"{metrics.get('chunker_type', 'arabic')} | {metrics.get('reranker_used', 'none')} | "
             f"{metrics['embedding_model']} | {metrics['llm_model']} | "
             f"{metrics['n_examples']} | {metrics['precision_at_k']} | "
@@ -128,7 +128,7 @@ def main():
     print("\n=== Evaluation Complete ===")
     for key, value in metrics.items():
         print(f"{key}: {value}")
-    print(f"\nAppended to docs/benchmark_results.md")
+    print("\nAppended to docs/benchmark_results.md")
 
 
 if __name__ == "__main__":

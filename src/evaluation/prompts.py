@@ -4,9 +4,7 @@ These prompts are designed for Arabic-language essay evaluation
 with rubric-aware structured output.
 """
 
-from src.evaluation.rubric import GradingConfig
-from src.evaluation.schemas import KnowledgeConfigRequest
-
+from src.evaluation.rubric import Criterion, GradingConfig
 
 # System prompt that frames the evaluation task
 EVALUATION_SYSTEM_PROMPT = """أنت مصحح أكاديمي خبير ومحايد. مهمتك تقييم إجابة الطالب بناءً على المعايير (Rubric) المحددة بدقة.
@@ -40,16 +38,6 @@ def build_evaluation_prompt(
     Returns:
         Complete prompt string for LLM
     """
-    # Build criteria JSON for the prompt
-    criteria_json = [
-        {
-            "id": c.id,
-            "description": c.description,
-            "max_score": c.max_score,
-        }
-        for c in grading.criteria
-    ]
-
     # Format criteria for readability in prompt
     criteria_lines = []
     for c in grading.criteria:

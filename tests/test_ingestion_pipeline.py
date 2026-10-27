@@ -1,6 +1,5 @@
 import os
 import sys
-import shutil
 import uuid
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -9,8 +8,7 @@ import pytest
 
 from src.embeddings.base import HashEmbedding
 from src.ingestion.pipeline import ingest_document
-from src.retrieval.vector_store import get_client, search, collection_for_chunker
-
+from src.retrieval.vector_store import collection_for_chunker, get_client, search
 
 ARABIC_SAMPLE = (
     "اللغة العربية لغة جميلة وغنية. تحتوي على تراث أدبي عريق. "

@@ -3,13 +3,13 @@ Rubric and criterion domain models for evaluation.
 """
 
 from dataclasses import dataclass, field
-from typing import Optional
-from typing_extensions import Self
+from enum import StrEnum
+from typing import Self
+
 from pydantic import BaseModel, Field, model_validator
-from enum import Enum
 
 
-class EvidenceType(str, Enum):
+class EvidenceType(StrEnum):
     SUPPORTED = "SUPPORTED"
     PARTIAL = "PARTIAL"
     ABSENT = "ABSENT"
@@ -39,7 +39,7 @@ class GradingConfig(BaseModel):
             )
         return self
 
-    def get_criterion(self, criterion_id: str) -> Optional[Criterion]:
+    def get_criterion(self, criterion_id: str) -> Criterion | None:
         """Get criterion by ID."""
         for c in self.criteria:
             if c.id == criterion_id:
@@ -56,7 +56,7 @@ class CriterionResult:
     criterion_id: str
     earned: int
     max: int
-    evidence: Optional[str] = None
+    evidence: str | None = None
     evidence_type: str = "ABSENT"  # SUPPORTED, PARTIAL, ABSENT
     feedback_ar: str = ""
 
@@ -118,7 +118,7 @@ class EvaluationResult:
         for c in self.criteria:
             if c.earned == 0 and c.evidence_type != "ABSENT":
                 errors.append(f"{c.criterion_id}: earned=0 requires evidence_type=ABSENT")
-            if c.earned == c.max_score and c.evidence_type != "SUPPORTED":
+            if c.earned == c.max and c.evidence_type != "SUPPORTED":
                 errors.append(f"{c.criterion_id}: earned=max requires evidence_type=SUPPORTED")
 
         # 5. Review signal bounds
