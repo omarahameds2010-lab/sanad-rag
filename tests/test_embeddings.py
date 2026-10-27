@@ -11,8 +11,11 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+import pytest
+
 from src.embeddings.base import (
     HashEmbedding,
+    OpenAIEmbedding,
     _format_passages,
     _format_query,
 )
@@ -31,3 +34,15 @@ def test_bge_m3_uses_no_prefixes():
 def test_hash_embedding_query_matches_document_embedding():
     model = HashEmbedding(dims=16)
     assert model.embed_query("سؤال") == model.embed(["سؤال"])[0]
+
+
+def test_openai_embedding_dimensions_are_model_specific():
+    assert OpenAIEmbedding("text-embedding-3-small").dimensions == 1536
+    assert OpenAIEmbedding("text-embedding-3-large").dimensions == 3072
+    # The old "small in name else 3072" guess got ada-002 wrong.
+    assert OpenAIEmbedding("text-embedding-ada-002").dimensions == 1536
+
+
+def test_openai_embedding_rejects_unknown_model():
+    with pytest.raises(ValueError, match="Unknown OpenAI embedding model"):
+        OpenAIEmbedding("my-custom-embedding")

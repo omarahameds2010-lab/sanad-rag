@@ -79,6 +79,13 @@ class SentenceTransformerEmbedding(EmbeddingModel):
         return self._model.get_sentence_embedding_dimension()  # legacy API
 
 
+_OPENAI_EMBEDDING_DIMS = {
+    "text-embedding-3-small": 1536,
+    "text-embedding-3-large": 3072,
+    "text-embedding-ada-002": 1536,
+}
+
+
 class OpenAIEmbedding(EmbeddingModel):
     """
     Comparison arm: OpenAI's embedding API. Kept behind the same interface
@@ -87,8 +94,14 @@ class OpenAIEmbedding(EmbeddingModel):
     """
 
     def __init__(self, model_name: str = "text-embedding-3-small"):
+        if model_name not in _OPENAI_EMBEDDING_DIMS:
+            raise ValueError(
+                f"Unknown OpenAI embedding model {model_name!r}; known models: "
+                f"{sorted(_OPENAI_EMBEDDING_DIMS)}. Add its dimension explicitly "
+                "instead of guessing from the name."
+            )
         self.name = model_name
-        self._dims = 1536 if "small" in model_name else 3072
+        self._dims = _OPENAI_EMBEDDING_DIMS[model_name]
 
     def embed(self, texts: list[str]) -> list[list[float]]:
         import os

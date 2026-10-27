@@ -364,7 +364,7 @@ class RuntimeEvaluator:
         parent_chunks.sort(key=lambda c: c.get("fused_score", 0.0), reverse=True)
         
         if reranker:
-            parent_chunks = reranker.rerank(normalize_for_retrieval(""), parent_chunks, top_k=top_k)
+            parent_chunks = reranker.rerank(normalized_query, parent_chunks, top_k=top_k)
         else:
             parent_chunks = parent_chunks[:top_k]
         

@@ -63,6 +63,11 @@ class CrossEncoderReranker(Reranker):
         if not chunks:
             return []
 
+        if not question.strip():
+            # No query signal: preserve retrieval order instead of letting a
+            # cross-encoder score pairs against an empty string.
+            return chunks[:top_k]
+
         if self._model is None:
             # Fallback: simple keyword overlap scoring
             return self._fallback_rerank(question, chunks, top_k)
