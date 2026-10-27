@@ -9,6 +9,12 @@
 > Each evaluation row traces to a stored SQLite run (`data/sanad.db`,
 > `evaluation_runs`) — nothing here is hand-typed.
 
+> **2026-10-27 update:** `bge-m3` now loads and embeds on this host (the old
+> scipy/Application Control blocker is gone). The first real retrieval-only
+> run on the 23-source manifest corpus is recorded in
+> `docs/benchmark_results.md`. The rows below remain dev-only and are kept
+> as pipeline history, not as retrieval-quality claims.
+
 Environment (2026-10-16): Windows + Python 3.14 venv,
 `EMBEDDING_MODEL=hash-dev` (128-dim trigram hash), LLM = Gemini 3.8 Flash
 with `FakeLLM` fallback (fallback wired into `/evaluate/run` by commit
@@ -16,7 +22,7 @@ with `FakeLLM` fallback (fallback wired into `/evaluate/run` by commit
 Qdrant embedded (`data/qdrant_local`), `bge-m3` unavailable on this host
 (scipy DLL blocked by Application Control policy).
 
-## 1. Test suite: 86/86 passing
+## 1. Test suite: 100/100 passing (2026-10-27)
 
 | File | Tests | Covers |
 |---|---|---|
@@ -25,12 +31,14 @@ Qdrant embedded (`data/qdrant_local`), `bge-m3` unavailable on this host
 | `test_query_expansion.py` | 9 | Arabic synonyms/templates, variation caps |
 | `test_query_pipeline.py` | 9 | full contract, empty index, fallback, extractive parity, branch/source scope, prune |
 | `test_hierarchical_chunking.py` | 8 | parent-child linkage, size invariants |
+| `test_evaluation_harness.py` | 8 | batch metrics, persistence, retrieval-only, no-ingest, axes roundtrip, legacy migration |
 | `test_phase8_integration.py` | 6 | hierarchical + rerank + expansion |
+| `test_corpus_manifest.py` | 6 | SHA-256 manifest, filler removal, strict audit |
+| `test_ingestion_pipeline.py` | 5 | ingest → store → retrieve, stale-tail replacement |
 | `test_chunking.py` | 4 | Arabic sentence splitting, diacritics normalization |
-| `test_ingestion_pipeline.py` | 3 | ingest → store → retrieve |
-| `test_evaluation_harness.py` | 5 | batch metrics, persistence, recall tripwire, axes roundtrip, legacy migration |
+| `test_embeddings.py` | 3 | e5 query/passage prefixes, bge-m3 no-prefix |
 | `test_runtime_validation.py` | 2 | forced teacher review on invalid grades |
-| **Total** | **86** | **0 failures** |
+| **Total** | **100** | **0 failures** |
 
 Experimental axes (`embedding/llm/chunker/reranker/expansion/dev-flag`)
 are now persisted per run — comparisons are DB-reproducible;
@@ -126,6 +134,23 @@ precision stays ~0.13–0.15, the expected ceiling of trigram-hash
 retrieval. Latency is Gemini-dominated (timeouts + fallback), **not**
 retrieval time — pure retrieval answers in ~30–55ms (see §4).
 
+## 2c. First real bge-m3 retrieval-only run (2026-10-27)
+
+Same golden v5 (16 questions), same 23-source manifest corpus (722
+chunks), Qdrant server 1.20.0 in Docker, CPU-only. No LLM was called;
+`--no-ingest` scored the already-ingested collection.
+
+| run_id (short) | config | embedding | n | Precision@5 | Recall@5 | p50 (s) | p95 (s) |
+|---|---|---|---|---|---|---|---|
+| `0b5110ff` | bge-m3-arabic-23 | BAAI/bge-m3 (1024d) | 16 | 0.1875 | 0.9375 | 0.3156 | 0.6182 |
+
+Canonical row with host and reproduction details:
+`docs/benchmark_results.md`. Against the hash-dev v5 baseline
+(0.150/0.750), recall rose by 0.1875 absolute (15/16 vs 12/16 questions
+hit) and precision by 0.0375. The latency is query embedding + Qdrant
+search on CPU, so it is not comparable to the Gemini-dominated dev
+latencies above.
+
 ## 3. Live index snapshot (2026-10-16, `sanad_chunks_*`)
 
 3,657 points total. Queryable library (`arabic_128`): 695 points across
@@ -135,6 +160,11 @@ residues (`branch-*-doc`, `doc1`, `test`). Legacy `*_1024` collections
 live data. 266 filler points were quarantined and deleted (commit
 `e60b1c2`); the 10 filler sources are listed in
 `scripts/prune_index.py::FILLER_SOURCES` with the audit rationale.
+
+> **2026-10-27:** the current `arabic_128` collection contains 733 points
+> across 31 source ids (722 genuine points from the 23 manifest sources +
+> 11 test residues). The new `arabic_1024` benchmark collection contains
+> exactly the 722 genuine points, ingested with `BAAI/bge-m3`.
 
 ## 4. Live endpoint proofs (this host, hash-dev)
 

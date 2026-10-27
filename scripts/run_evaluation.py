@@ -40,9 +40,24 @@ def get_real_llm():
     return FakeLLM()
 
 
+BENCHMARK_HEADER = (
+    "| Timestamp | Config | Chunker | Reranker | Embedding | LLM | N | "
+    "Precision@k | Recall@k | p50 latency (s) | p95 latency (s) | "
+    "Dev-only? | run_id |"
+)
+BENCHMARK_SEPARATOR = "|---|---|---|---|---|---|---|---|---|---|---|---|---|"
+
+
 def append_benchmark_result(metrics: dict, benchmark_file: str = "docs/benchmark_results.md"):
     path = Path(benchmark_file)
     is_new = not path.exists()
+    if not is_new:
+        existing = path.read_text(encoding="utf-8")
+        if BENCHMARK_HEADER not in existing:
+            raise ValueError(
+                f"{benchmark_file} does not contain the current 13-column header; "
+                "fix the table before appending (refusing to write a misaligned row)."
+            )
 
     with open(path, "a", encoding="utf-8") as f:
         if is_new:
@@ -54,12 +69,8 @@ def append_benchmark_result(metrics: dict, benchmark_file: str = "docs/benchmark
                 "`data/sanad.db` (`evaluation_runs` table) for full "
                 "traceability.\n\n"
             )
-            f.write(
-                "| Timestamp | Config | Chunker | Reranker | Embedding | LLM | N | "
-                "Precision@k | Recall@k | p50 latency (s) | p95 latency (s) | "
-                "Dev-only? | run_id |\n"
-            )
-            f.write("|---|---|---|---|---|---|---|---|---|---|---|---|---|\n")
+            f.write(BENCHMARK_HEADER + "\n")
+            f.write(BENCHMARK_SEPARATOR + "\n")
 
         f.write(
             f"| {datetime.now(UTC).isoformat()} | {metrics['config_name']} | "
