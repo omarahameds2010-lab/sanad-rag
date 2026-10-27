@@ -2,7 +2,7 @@
 
 > **سند**: الأساس اللي بترتكز عليه — بالظبط زي ما المشروع ده بيبني أساس retrieval سليم للمحتوى العربي قبل ما نديه لأي LLM.
 
-**Status:** Phase 11b in progress — the first real retrieval-only benchmark is recorded on the audited corpus (`BAAI/bge-m3`, 23 sources / 722 chunks: Precision@5 0.1875, Recall@5 0.9375, p50 0.316 s on CPU; see `docs/benchmark_results.md`); the corpus is SHA-256-pinned in `data/knowledge/corpus_manifest.json`; 100 tests pass. LMS end-to-end proof still waits on the platform database credentials.
+**Status:** Phase 11b in progress — real retrieval-only benchmarks are recorded on the audited corpus (`BAAI/bge-m3`, 23 sources / 722 chunks and 35 sources / 891 chunks: Precision@5 0.1875, Recall@5 0.9375, p50 0.316–0.364 s on CPU; see `docs/benchmark_results.md`); the corpus is SHA-256-pinned in `data/knowledge/corpus_manifest.json`; 110 tests pass. LMS end-to-end proof still waits on the platform database credentials.
 [![Tests](https://github.com/omarahameds2010-lab/sanad-rag/actions/workflows/tests.yml/badge.svg)](https://github.com/omarahameds2010-lab/sanad-rag/actions/workflows/tests.yml)
 **Author:** Omar Ahmed ([GitHub](https://github.com/omarahameds2010-lab) · [LinkedIn](https://linkedin.com/in/omar-ahmed-7b97613b1))
 
@@ -107,13 +107,13 @@ Experiments compared: **baseline chunking vs Arabic-aware chunking**, **single e
 - [x] Phase 9 — Security review (see `src/security/__init__.py`, `tests/test_security.py`): API-key auth (`X-API-Key`), per-IP rate limiting, security headers, CORS, input sanitization/injection detection
 - [x] Phase 10 — Deployment (see `Dockerfile`, `docker-compose.prod.yml`, `nginx/`, `.github/workflows/ci-cd.yml`): multi-service prod compose (nginx + api + qdrant + frontend + redis), TLS reverse proxy routing UI vs API, CI pipeline (lint → security scan → tests → Docker build → deploy)
 - [x] Phase 11a — LMS integration surface: pure extractive retrieval (`POST /query/extractive`, no LLM, merged with scope filters, citations by construction), library branch taxonomy (`src/ingestion/branches.py`: nahw/sarf/balagha/arood/adab/lugha/quran/hadith/sira/misc) with `branch`/`source_ids` scoping on both query paths, graded-judgement fallback + forced teacher review on validation failure, SHA-256 corpus manifest (`data/knowledge/corpus_manifest.json`, `scripts/audit_corpus.py`), dev benchmarks log (`docs/DEV_BENCHMARKS.md`), and a working LMS client (`sanad-edtech: assignments/sanad.client.ts`)
-- [ ] Phase 11b — Final documentation (real benchmark row done: `docs/benchmark_results.md`; LMS end-to-end proof waits on the platform DB connection)
+- [ ] Phase 11b — Final documentation (real benchmark rows done: `docs/benchmark_results.md`; LMS end-to-end proof waits on the platform DB connection)
 
 ## 7. Limitations (Honest, as of this stage)
 
 - Golden dataset is currently small (student-scale) — statistical confidence is limited until it grows.
 - No fine-tuning of embedding models is planned for MVP — out of scope for a student budget with no GPU cluster.
-- The real bge-m3 benchmark runs on CPU: p50 0.316 s and p95 0.618 s for query embedding + vector search. That is sub-second, not millisecond-scale; a strict ms SLO needs a GPU or a smaller embedding model.
+- The real bge-m3 benchmark runs on CPU: p50 0.316–0.364 s and p95 0.612–0.619 s for query embedding + vector search. That is sub-second, not millisecond-scale; a strict ms SLO needs a GPU or a smaller embedding model.
 - This is not a production-scale system; see `docs/architecture_tiers.md` for MVP vs Production vs Hyperscale distinctions.
 
 ## 8. Setup

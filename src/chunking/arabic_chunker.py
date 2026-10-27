@@ -43,6 +43,71 @@ def split_sentences(text: str) -> list[str]:
     return [s.strip() for s in sentences if s.strip()]
 
 
+def _split_long_sentence(
+    sentence: str,
+    max_chars: int,
+    overlap_chars: int = 100,
+) -> list[str]:
+    """Split a punctuation-free sentence at word boundaries.
+
+    Poetry, lists, and raw OCR often contain thousands of characters without
+    a single sentence-final mark. Keeping that as one chunk defeats retrieval
+    and bloats the embedding input, so split on whitespace while never
+    cutting inside a word. A small trailing-word overlap preserves context.
+    """
+    if len(sentence) <= max_chars:
+        return [sentence]
+
+    words = sentence.split()
+    parts: list[str] = []
+    current: list[str] = []
+    current_len = 0
+
+    for word in words:
+        addition = len(word) + (1 if current else 0)
+        if current and current_len + addition > max_chars:
+            parts.append(" ".join(current))
+
+            carry: list[str] = []
+            carry_len = 0
+            for previous in reversed(current):
+                carry_addition = len(previous) + (1 if carry else 0)
+                if carry_len + carry_addition > overlap_chars:
+                    break
+                carry.insert(0, previous)
+                carry_len += carry_addition
+
+            current = carry
+            current_len = carry_len
+            if current_len + len(word) + (1 if current else 0) > max_chars:
+                current = []
+                current_len = 0
+
+        current.append(word)
+        current_len += len(word) + (1 if len(current) > 1 else 0)
+
+    if current:
+        parts.append(" ".join(current))
+
+    return parts
+
+
+def _prepare_sentences(text: str, max_chars: int) -> list[tuple[str, bool]]:
+    """Return (text, is_long_part) entries, splitting oversized sentences."""
+    entries: list[tuple[str, bool]] = []
+    for sentence in split_sentences(text):
+        if len(sentence) <= max_chars:
+            entries.append((sentence, False))
+        else:
+            parts = _split_long_sentence(
+                sentence,
+                max_chars,
+                overlap_chars=min(100, max_chars // 8),
+            )
+            entries.extend((part, True) for part in parts)
+    return entries
+
+
 def chunk_text(
     text: str,
     max_chunk_chars: int = 800,
@@ -55,32 +120,32 @@ def chunk_text(
     Args:
         text: normalized document text (already run through
               ingestion.normalize.clean_for_display).
-        max_chunk_chars: soft limit on characters per chunk. A single
-              sentence longer than this limit is kept whole rather than
-              being cut mid-word.
+        max_chunk_chars: soft limit on characters per chunk. Multi-sentence
+              chunks can exceed it slightly by the spaces between sentences;
+              a single sentence longer than the limit is split at word
+              boundaries (never mid-word) with a small word overlap.
         overlap_sentences: number of trailing sentences from the previous
               chunk repeated at the start of the next chunk, to preserve
               context continuity across chunk boundaries.
         metadata: optional metadata to attach to every chunk (source_id,
               page_number, etc.) for citation tracking downstream.
     """
-    sentences = split_sentences(text)
-    if not sentences:
+    entries = _prepare_sentences(text, max_chunk_chars)
+    if not entries:
         return []
 
     chunks: list[Chunk] = []
-    current: list[str] = []
+    current: list[tuple[str, bool]] = []
     current_len = 0
     start_idx = 0
 
-    for i, sentence in enumerate(sentences):
+    for i, (sentence, is_long_part) in enumerate(entries):
         sentence_len = len(sentence)
 
         if current_len + sentence_len > max_chunk_chars and current:
-            chunk_text_value = " ".join(current)
             chunks.append(
                 Chunk(
-                    text=chunk_text_value,
+                    text=" ".join(s for s, _ in current),
                     start_sentence_idx=start_idx,
                     end_sentence_idx=i - 1,
                     metadata=dict(metadata or {}),
@@ -88,19 +153,23 @@ def chunk_text(
             )
             # carry over the last `overlap_sentences` sentences for context
             overlap = current[-overlap_sentences:] if overlap_sentences else []
+            # Long-sentence parts already carry a word overlap; copying a
+            # whole 800-char part would double the chunk size for no gain.
+            if is_long_part or any(is_long for _, is_long in overlap):
+                overlap = []
             current = list(overlap)
-            current_len = sum(len(s) for s in current)
+            current_len = sum(len(s) for s, _ in current)
             start_idx = i - len(overlap)
 
-        current.append(sentence)
+        current.append((sentence, is_long_part))
         current_len += sentence_len
 
     if current:
         chunks.append(
             Chunk(
-                text=" ".join(current),
+                text=" ".join(s for s, _ in current),
                 start_sentence_idx=start_idx,
-                end_sentence_idx=len(sentences) - 1,
+                end_sentence_idx=len(entries) - 1,
                 metadata=dict(metadata or {}),
             )
         )

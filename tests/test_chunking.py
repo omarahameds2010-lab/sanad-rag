@@ -32,3 +32,16 @@ def test_strip_diacritics_removes_tashkeel():
 
 def test_normalize_for_retrieval_unifies_alef_variants():
     assert normalize_for_retrieval("أحمد") == normalize_for_retrieval("احمد")
+
+
+def test_long_unpunctuated_sentence_splits_at_word_boundaries():
+    """Poetry and lists have no sentence punctuation; a long poem must not
+    become one giant chunk (the Nazm al-Ajurrumiyya regression)."""
+    text = " ".join(["كلمة"] * 400)
+    chunks = chunk_text(text, max_chunk_chars=300, overlap_sentences=1)
+
+    assert len(chunks) > 1
+    assert max(len(c.text) for c in chunks) <= 300
+    words = [word for c in chunks for word in c.text.split()]
+    assert set(words) == {"كلمة"}
+    assert len(words) >= 400  # overlap may duplicate words, never drop them

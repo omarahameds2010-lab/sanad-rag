@@ -29,9 +29,9 @@ BRANCHES = {"nahw", "sarf", "balagha", "arood", "adab", "lugha", "quran", "sira"
 
 def test_manifest_has_unique_audited_sources():
     sources = manifest_sources(load_manifest())
-    assert len(sources) == 23
-    assert len({s.source_id for s in sources}) == 23
-    assert len({s.file for s in sources}) == 23
+    assert len(sources) == 35
+    assert len({s.source_id for s in sources}) == 35
+    assert len({s.file for s in sources}) == 35
     for source in sources:
         assert source.branch in BRANCHES
         assert source.title.strip()
@@ -53,6 +53,15 @@ def test_manifest_never_includes_filler():
 def test_filler_files_are_gone_from_disk():
     for filler in FILLER_FILES:
         assert not (ROOT / filler).exists(), f"{filler} is filler and must not ship"
+
+
+def test_all_audited_sources_are_ingested():
+    manifest = load_manifest()
+    assert manifest["audited_not_yet_ingested"] == []
+    files = {s.file for s in manifest_sources(manifest)}
+    assert "data/knowledge/duaa_quran_bank.txt" in files
+    assert "data/knowledge/opensource_nazm_ajurrumiyya.txt" in files
+    assert "data/knowledge/tarikh_masr.txt" in files
 
 
 def test_excluded_patterns_are_explicit():

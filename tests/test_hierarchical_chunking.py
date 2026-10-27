@@ -140,3 +140,22 @@ def test_hierarchical_chunk_text_backward_compat():
         assert hasattr(c, 'text')
         assert hasattr(c, 'start_sentence_idx')
         assert hasattr(c, 'end_sentence_idx')
+
+
+def test_long_unpunctuated_text_is_split():
+    """A punctuation-free poem must not yield one giant parent/child chunk."""
+    text = " ".join(["كلمة"] * 500)
+    parents, children = hierarchical_chunk_text(
+        text,
+        max_parent_chars=400,
+        max_child_chars=150,
+        parent_overlap_sentences=1,
+        child_overlap_sentences=0,
+    )
+
+    assert parents
+    assert children
+    assert max(len(p.text) for p in parents) <= 850
+    assert max(len(c.text) for c in children) <= 300
+    for child in children:
+        assert set(child.text.split()) == {"كلمة"}

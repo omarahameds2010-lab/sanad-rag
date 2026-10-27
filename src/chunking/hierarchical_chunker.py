@@ -19,6 +19,8 @@ generation context quality.
 import re
 from dataclasses import dataclass, field
 
+from .arabic_chunker import _split_long_sentence
+
 # Reuse the Arabic-aware sentence splitter from arabic_chunker
 SENTENCE_BOUNDARY = re.compile(r"(?<=[.!؟?؛۔])\s+")
 
@@ -45,10 +47,29 @@ class ChildChunk:
     metadata: dict = field(default_factory=dict)
 
 
-def split_sentences(text: str) -> list[str]:
-    """Split normalized text into sentences using Arabic-aware boundaries."""
-    sentences = SENTENCE_BOUNDARY.split(text.strip())
-    return [s.strip() for s in sentences if s.strip()]
+def split_sentences(text: str, max_sentence_chars: int | None = None) -> list[str]:
+    """Split normalized text into sentences using Arabic-aware boundaries.
+
+    When ``max_sentence_chars`` is set, punctuation-free sentences longer
+    than the limit (poetry, lists, OCR) are split at word boundaries.
+    """
+    sentences = [s.strip() for s in SENTENCE_BOUNDARY.split(text.strip()) if s.strip()]
+    if max_sentence_chars is None:
+        return sentences
+
+    expanded: list[str] = []
+    for sentence in sentences:
+        if len(sentence) <= max_sentence_chars:
+            expanded.append(sentence)
+        else:
+            expanded.extend(
+                _split_long_sentence(
+                    sentence,
+                    max_sentence_chars,
+                    overlap_chars=min(100, max_sentence_chars // 8),
+                )
+            )
+    return expanded
 
 
 def build_parent_chunks(
@@ -61,7 +82,7 @@ def build_parent_chunks(
     Build parent chunks from text using sentence-boundary aware chunking.
     These are the chunks that will be sent to the LLM for context.
     """
-    sentences = split_sentences(text)
+    sentences = split_sentences(text, max_sentence_chars=max_parent_chars)
     if not sentences:
         return []
 
@@ -123,7 +144,7 @@ def build_child_chunks(
     """
     # Get the sentences that belong to this parent
     # We need the full text sentences - for simplicity, we split the parent text
-    sentences = split_sentences(parent.text)
+    sentences = split_sentences(parent.text, max_sentence_chars=max_child_chars)
     if not sentences:
         return []
 

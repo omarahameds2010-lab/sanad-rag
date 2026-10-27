@@ -5,12 +5,28 @@
   "policy": "Only sources listed here may be indexed. Every file is checked by scripts/audit_corpus.py (no template repetition, no English padding, mostly Arabic) and by tests/test_corpus_manifest.py (exists + sha256).",
   "sources": [
     {
+      "source_id": "aalam_adab_v1",
+      "file": "data/knowledge/aalam_adab.txt",
+      "title": "أعلام النحو والبلاغة والأدب",
+      "branch": "adab",
+      "chars": 5220,
+      "sha256": "39a0b70aec80820201dcdc941e248dded9f2e18807291de58338050df45f3c3c"
+    },
+    {
       "source_id": "alfiyya_study_v1",
       "file": "data/knowledge/alfiyya_study.txt",
       "title": "دراسة ألفية ابن مالك",
       "branch": "nahw",
       "chars": 7082,
       "sha256": "a3d6488fcbb3f04446fbf8ba50f9b6b3bab5002b9537be72b4b4f9426f9c1b70"
+    },
+    {
+      "source_id": "amthal_hikam_v1",
+      "file": "data/knowledge/amthal_hikam.txt",
+      "title": "الأمثال والحكم العربية",
+      "branch": "adab",
+      "chars": 40080,
+      "sha256": "155749472b233eb64faa570491acacea947796418f04559f4c311dac276cf7da"
     },
     {
       "source_id": "arood_qawafi_v1",
@@ -27,6 +43,30 @@
       "branch": "balagha",
       "chars": 10875,
       "sha256": "0440cd084d09155be760c6d6e2086554bc89e4ef1ba5e3fb5fc1db8a814fba35"
+    },
+    {
+      "source_id": "balagha_v1",
+      "file": "data/knowledge/balagha.txt",
+      "title": "البلاغة: البيان والبديع والمعاني",
+      "branch": "balagha",
+      "chars": 4722,
+      "sha256": "525b97d05ef73d7533ca34873a5967d3811547037f44dee20265a92077de973c"
+    },
+    {
+      "source_id": "diwan_selections_v1",
+      "file": "data/knowledge/diwan_selections.txt",
+      "title": "مختارات من الدواوين الشعرية",
+      "branch": "adab",
+      "chars": 6136,
+      "sha256": "eec45f853db3c6f719239595fb2a338694eff520014862e08ea55fda94ab2e67"
+    },
+    {
+      "source_id": "duaa_quran_bank_v1",
+      "file": "data/knowledge/duaa_quran_bank.txt",
+      "title": "بنك الأدعية والدروس القرآنية",
+      "branch": "quran",
+      "chars": 6639,
+      "sha256": "5cf323ecba338c24b189ffb3fb6d507d95f1fe1aa163a6926d9ba62dfcf17b79"
     },
     {
       "source_id": "exam_bank_balagha_v1",
@@ -101,6 +141,22 @@
       "sha256": "93490d9289e2329391c0374264079d6ee4a113ef49c12a3361f10c40443e6b74"
     },
     {
+      "source_id": "insha_models_v1",
+      "file": "data/knowledge/insha_models.txt",
+      "title": "نماذج مواضيع الإنشاء",
+      "branch": "adab",
+      "chars": 5635,
+      "sha256": "f2991af5def4c7554bd79d03602e12061db62f11c6da36fc1583a4ef5dd2e03e"
+    },
+    {
+      "source_id": "irab_quran_hadith_v1",
+      "file": "data/knowledge/irab_quran_hadith.txt",
+      "title": "إعراب القرآن والحديث",
+      "branch": "nahw",
+      "chars": 10044,
+      "sha256": "640db44f9465d1414d1915d40e3206af4dcb552ca7b538838d0075aa50ab8cdc"
+    },
+    {
       "source_id": "juzamma_tafsir_v1",
       "file": "data/knowledge/juzamma_tafsir.txt",
       "title": "تفسير جزء عمّ",
@@ -115,6 +171,14 @@
       "branch": "arood",
       "chars": 4572,
       "sha256": "a74f4915d23b6247aff3553a76756aac3089f3edeb6b8572899823979274ac6e"
+    },
+    {
+      "source_id": "nahj_selections_v1",
+      "file": "data/knowledge/nahj_selections.txt",
+      "title": "مختارات من نهج البلاغة",
+      "branch": "balagha",
+      "chars": 5390,
+      "sha256": "f590493c26076589aea624eb2b6d87dc6af1059623019e957b811f398e6f98fc"
     },
     {
       "source_id": "nahw_advanced_v1",
@@ -141,6 +205,22 @@
       "sha256": "fa3aed5fd0e8117fd5450752aeeb22e3fcdf90cf498c120c4d790adfc3b84346"
     },
     {
+      "source_id": "nosous_qiraa_bank_v1",
+      "file": "data/knowledge/nosous_qiraa_bank.txt",
+      "title": "بنك النصوص والقراءة",
+      "branch": "adab",
+      "chars": 9438,
+      "sha256": "e046cd3b046a47599bc92fed8f546193c96af98be43604b6fa837ce48d286012"
+    },
+    {
+      "source_id": "opensource_nazm_ajurrumiyya_v1",
+      "file": "data/knowledge/opensource_nazm_ajurrumiyya.txt",
+      "title": "نظم الآجرومية",
+      "branch": "nahw",
+      "chars": 11618,
+      "sha256": "79ae89179ec3ce6c03bd39dca3d3f234cbbde672407cb2d61da82a6c8adc05a1"
+    },
+    {
       "source_id": "qiraa_nosous_v1",
       "file": "data/knowledge/qiraa_nosous.txt",
       "title": "قراءة النصوص",
@@ -155,6 +235,14 @@
       "branch": "lugha",
       "chars": 8612,
       "sha256": "fb74a1d3ff69e29251028a56e5f515a526e2eddf94ebe0e16e25d2b6a7fb93b1"
+    },
+    {
+      "source_id": "sarf_emlaa_v1",
+      "file": "data/knowledge/sarf_emlaa.txt",
+      "title": "الصرف والإملاء والترقيم",
+      "branch": "sarf",
+      "chars": 7911,
+      "sha256": "8411ef4c27fb69f6a8bd12dc314e464cecb02fb3f8143f023cc210dd8d4396d6"
     },
     {
       "source_id": "seera_nabaweya_v1",
@@ -187,6 +275,14 @@
       "branch": "misc",
       "chars": 3448,
       "sha256": "c61be8fe252faa6238dfc8036ef23084c325366874d3012b97ff9bf26e5ed70c"
+    },
+    {
+      "source_id": "tarikh_masr_v1",
+      "file": "data/knowledge/tarikh_masr.txt",
+      "title": "تاريخ مصر",
+      "branch": "misc",
+      "chars": 7767,
+      "sha256": "0f8dd38870745dbf55ac2f5d328efc7c644713ad0761d3b1f497955077aae748"
     }
   ],
   "excluded": [
@@ -211,56 +307,7 @@
       "reason": "English-padded/corrupt hadith text; removed — hadith stays empty"
     }
   ],
-  "audited_not_yet_ingested": [
-    {
-      "file": "data/knowledge/aalam_adab.txt",
-      "reason": "PASS audit; queued for the next corpus wave (not in the 23-source live index)"
-    },
-    {
-      "file": "data/knowledge/amthal_hikam.txt",
-      "reason": "PASS audit; queued for the next corpus wave (not in the 23-source live index)"
-    },
-    {
-      "file": "data/knowledge/balagha.txt",
-      "reason": "PASS audit; queued for the next corpus wave (not in the 23-source live index)"
-    },
-    {
-      "file": "data/knowledge/diwan_selections.txt",
-      "reason": "PASS audit; queued for the next corpus wave (not in the 23-source live index)"
-    },
-    {
-      "file": "data/knowledge/duaa_quran_bank.txt",
-      "reason": "PASS audit; queued for the next corpus wave (not in the 23-source live index)"
-    },
-    {
-      "file": "data/knowledge/insha_models.txt",
-      "reason": "PASS audit; queued for the next corpus wave (not in the 23-source live index)"
-    },
-    {
-      "file": "data/knowledge/irab_quran_hadith.txt",
-      "reason": "PASS audit; queued for the next corpus wave (not in the 23-source live index)"
-    },
-    {
-      "file": "data/knowledge/nahj_selections.txt",
-      "reason": "PASS audit; queued for the next corpus wave (not in the 23-source live index)"
-    },
-    {
-      "file": "data/knowledge/nosous_qiraa_bank.txt",
-      "reason": "PASS audit; queued for the next corpus wave (not in the 23-source live index)"
-    },
-    {
-      "file": "data/knowledge/opensource_nazm_ajurrumiyya.txt",
-      "reason": "PASS audit; queued for the next corpus wave (not in the 23-source live index)"
-    },
-    {
-      "file": "data/knowledge/sarf_emlaa.txt",
-      "reason": "PASS audit; queued for the next corpus wave (not in the 23-source live index)"
-    },
-    {
-      "file": "data/knowledge/tarikh_masr.txt",
-      "reason": "PASS audit; queued for the next corpus wave (not in the 23-source live index)"
-    }
-  ],
+  "audited_not_yet_ingested": [],
   "reviewed_non_filler": [
     {
       "file": "data/knowledge/gen_vocab_bank.txt",

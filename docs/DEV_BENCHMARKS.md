@@ -11,7 +11,7 @@
 
 > **2026-10-27 update:** `bge-m3` now loads and embeds on this host (the old
 > scipy/Application Control blocker is gone). The first real retrieval-only
-> run on the 23-source manifest corpus is recorded in
+> runs (23-source and 35-source manifest corpora) are recorded in
 > `docs/benchmark_results.md`. The rows below remain dev-only and are kept
 > as pipeline history, not as retrieval-quality claims.
 
@@ -22,7 +22,7 @@ with `FakeLLM` fallback (fallback wired into `/evaluate/run` by commit
 Qdrant embedded (`data/qdrant_local`), `bge-m3` unavailable on this host
 (scipy DLL blocked by Application Control policy).
 
-## 1. Test suite: 100/100 passing (2026-10-27)
+## 1. Test suite: 110/110 passing (2026-10-27)
 
 | File | Tests | Covers |
 |---|---|---|
@@ -30,15 +30,17 @@ Qdrant embedded (`data/qdrant_local`), `bge-m3` unavailable on this host
 | `test_api.py` | 17 | health, ingest, query, extractive + branch/source filters, evaluate report |
 | `test_query_expansion.py` | 9 | Arabic synonyms/templates, variation caps |
 | `test_query_pipeline.py` | 9 | full contract, empty index, fallback, extractive parity, branch/source scope, prune |
-| `test_hierarchical_chunking.py` | 8 | parent-child linkage, size invariants |
+| `test_hierarchical_chunking.py` | 9 | parent-child linkage, size invariants, long unpunctuated text |
 | `test_evaluation_harness.py` | 8 | batch metrics, persistence, retrieval-only, no-ingest, axes roundtrip, legacy migration |
 | `test_phase8_integration.py` | 6 | hierarchical + rerank + expansion |
-| `test_corpus_manifest.py` | 6 | SHA-256 manifest, filler removal, strict audit |
+| `test_corpus_manifest.py` | 7 | SHA-256 manifest, filler removal, strict audit, full wave promotion |
 | `test_ingestion_pipeline.py` | 5 | ingest → store → retrieve, stale-tail replacement |
-| `test_chunking.py` | 4 | Arabic sentence splitting, diacritics normalization |
-| `test_embeddings.py` | 3 | e5 query/passage prefixes, bge-m3 no-prefix |
+| `test_chunking.py` | 5 | Arabic sentence splitting, long-sentence word-boundary fallback |
+| `test_embeddings.py` | 5 | e5 query/passage prefixes, bge-m3 no-prefix, OpenAI dimensions |
+| `test_reranker.py` | 3 | empty-query order preservation, empty chunks, no-op |
+| `test_benchmark_docs.py` | 2 | 13-column results schema, header consistency |
 | `test_runtime_validation.py` | 2 | forced teacher review on invalid grades |
-| **Total** | **100** | **0 failures** |
+| **Total** | **110** | **0 failures** |
 
 Experimental axes (`embedding/llm/chunker/reranker/expansion/dev-flag`)
 are now persisted per run — comparisons are DB-reproducible;
@@ -134,22 +136,38 @@ precision stays ~0.13–0.15, the expected ceiling of trigram-hash
 retrieval. Latency is Gemini-dominated (timeouts + fallback), **not**
 retrieval time — pure retrieval answers in ~30–55ms (see §4).
 
-## 2c. First real bge-m3 retrieval-only run (2026-10-27)
+## 2c. First real bge-m3 retrieval-only runs (2026-10-27)
 
-Same golden v5 (16 questions), same 23-source manifest corpus (722
-chunks), Qdrant server 1.20.0 in Docker, CPU-only. No LLM was called;
-`--no-ingest` scored the already-ingested collection.
+Same golden v5 (16 questions), Qdrant server 1.20.0 in Docker, CPU-only.
+No LLM was called; `--no-ingest` scored the already-ingested collection.
 
 | run_id (short) | config | embedding | n | Precision@5 | Recall@5 | p50 (s) | p95 (s) |
 |---|---|---|---|---|---|---|---|
 | `0b5110ff` | bge-m3-arabic-23 | BAAI/bge-m3 (1024d) | 16 | 0.1875 | 0.9375 | 0.3156 | 0.6182 |
+| `b0877c18` | bge-m3-arabic-35 (pre-fix) | BAAI/bge-m3 (1024d) | 16 | 0.1875 | 0.9375 | 0.3403 | 0.6115 |
+| `64e2df16` | bge-m3-arabic-35 | BAAI/bge-m3 (1024d) | 16 | 0.1875 | 0.9375 | 0.3639 | 0.6194 |
 
-Canonical row with host and reproduction details:
-`docs/benchmark_results.md`. Against the hash-dev v5 baseline
-(0.150/0.750), recall rose by 0.1875 absolute (15/16 vs 12/16 questions
-hit) and precision by 0.0375. The latency is query embedding + Qdrant
-search on CPU, so it is not comparable to the Gemini-dominated dev
+Canonical rows with host and reproduction details:
+`docs/benchmark_results.md`. `b0877c18` was the first 35-source pass; it
+ran before the content correction described below and is superseded by
+`64e2df16` (kept here for audit history). Against the hash-dev v5
+baseline (0.150/0.750), recall rose by 0.1875 absolute (15/16 vs 12/16
+questions hit) and precision by 0.0375. The latency is query embedding +
+Qdrant search on CPU, so it is not comparable to the Gemini-dominated dev
 latencies above.
+
+The 35-source run added the 12 remaining audited files (169 genuine
+chunks; 722 → 891). Its first flat chunking of the punctuation-free poem
+`نظم الآجرومية` produced 2 chunks (max 11,522 chars); the chunker now
+splits long sentences at word boundaries, producing 18 chunks (max 800).
+The 23 earlier sources' chunk boundaries were verified byte-identical
+(722/722) after that fix, so the golden labels remain valid. A content
+correction moved 394 proverb lines that had been mislabeled at the top of
+`duaa_quran_bank.txt` into `amthal_hikam.txt`; the duaa source now holds
+153 lines of supplications and Quranic lessons. Both sources were
+re-ingested, and the corrected 35-source collection has 891 points. The
+larger corpus left precision/recall unchanged: the added genuine content
+did not displace the correct top-5 results.
 
 ## 3. Live index snapshot (2026-10-16, `sanad_chunks_*`)
 
@@ -161,10 +179,11 @@ live data. 266 filler points were quarantined and deleted (commit
 `e60b1c2`); the 10 filler sources are listed in
 `scripts/prune_index.py::FILLER_SOURCES` with the audit rationale.
 
-> **2026-10-27:** the current `arabic_128` collection contains 733 points
-> across 31 source ids (722 genuine points from the 23 manifest sources +
-> 11 test residues). The new `arabic_1024` benchmark collection contains
-> exactly the 722 genuine points, ingested with `BAAI/bge-m3`.
+> **2026-10-27:** the embedded `arabic_128` dev index still holds the
+> 23-source wave (733 points across 31 source ids: 722 genuine points +
+> 11 test residues). The Docker-server `arabic_1024` benchmark collection
+> now holds all 35 manifest sources (891 points), ingested with
+> `BAAI/bge-m3`.
 
 ## 4. Live endpoint proofs (this host, hash-dev)
 
