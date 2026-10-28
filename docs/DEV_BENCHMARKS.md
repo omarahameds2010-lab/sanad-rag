@@ -206,7 +206,7 @@ live data. 266 filler points were quarantined and deleted (commit
 4. Append the resulting row to `docs/benchmark_results.md` — that file,
    not this one, is the production record.
 
-## 6. LMS integration verification (sanad-edtech, 2026-10-16)
+## 6. LMS integration verification (sanad-edtech)
 
 Cross-repo proof that the Learning Platform actually consumes the
 contracts above. SANAD commits: extractive endpoint (`a9f948c`),
@@ -224,7 +224,61 @@ proxy, AI grading panel).
 | Live `POST /evaluate/submission` (2-criteria rubric) | `COMPLETED`, criteria scored, `needs_teacher_review` honored |
 | Contract lessons (both enforced live) | `request_id`/`submission_id`/`question_id` must be UUIDs (else 422); rubric sum must equal `max_score` (else 422) |
 
-Blocked live E2E (not a code gap): the LMS api needs its Railway
-`DATABASE_URL`, which is truncated in the local `.env` — booting `:3002`
-and running teacher evaluate → review → official grade waits on a
-complete connection string pasted locally by the owner.
+### Live LMS -> SANAD extractive E2E (2026-10-28)
+
+The Railway `DATABASE_URL` was completed by the owner, so the previously
+blocked joint run is now recorded. The LMS API was built from commit
+`5ac122d` (scope map: 35 sources across 8 branches) and booted on
+`127.0.0.1:3102` against the Railway Postgres; `/api/health` reported
+`database: up`. SANAD ran on `127.0.0.1:8000` with
+`EMBEDDING_MODEL=BAAI/bge-m3` and `QDRANT_URL=http://localhost:6333`
+(collection `sanad_chunks_arabic_1024`, 891 points / 35 sources;
+`/health` = `{status: ok, qdrant_ok: true, db_ok: true}`).
+
+Flow: teacher login on the seeded `sanad-demo` tenant ->
+`GET /api/v1/assignments` (real seeded assignment
+`2894d632-fc3e-499e-9bba-962eedcf09a6`, "واجب: إعراب وتحليل") ->
+`POST /api/v1/assignments/<id>/ask-sanad`. The endpoint is pure
+extractive retrieval; no LLM was called. The LMS resolves the branch
+server-side and sends explicit `source_ids`; the browser never chooses
+the scope.
+
+| Branch | Scope sources | Passages | Cited | `retrieval_ms` | Top-3 sources |
+|---|---:|---:|---:|---:|---|
+| nahw | 9 | 5 | 5 | 310.39 | `huruf_maani_v1`, `gen_fixed_irab_v1`, `opensource_nazm_ajurrumiyya_v1` |
+| adab | 9 | 5 | 5 | 312.46 | `amthal_hikam_v1` x3 |
+| quran | 2 | 5 | 5 | 306.73 | `duaa_quran_bank_v1`, `juzamma_tafsir_v1` x2 |
+
+The `nahw` scope includes the two new-wave banks (`irab_quran_hadith_v1`,
+`opensource_nazm_ajurrumiyya_v1`); the live response retrieved a passage
+from `opensource_nazm_ajurrumiyya_v1`. The `adab` scope includes the nine
+adab banks, including `amthal_hikam_v1`; the `quran` scope includes
+`duaa_quran_bank_v1`. This proves the LMS map and the 35-source SANAD
+index agree at runtime.
+
+Scope-map change: `sanad.scope.ts` previously covered 17 sources in 7
+branches; it now covers all 35 sources in 8 branches (nahw 9, sarf 3,
+balagha 5, arood 2, adab 9, lugha 3, quran 2, sira 2). The two SANAD
+`misc` banks are surfaced where learners expect them:
+`tahleel_egaba_v1` under adab and `tarikh_masr_v1` under sira. A new
+`sanad.scope.spec.ts` pins the 35-source/8-branch invariant. The LMS API
+suite is 357/357 (35 suites) and `nest build` is green.
+
+Not exercised in this live run: `POST /evaluate/submission` / the LMS
+`evaluate-ai` essay-grading path. The 1024 benchmark collection is flat
+`arabic`; essay grading uses hierarchical retrieval and an approved LLM,
+which need their own live collection/key. The extractive path recorded
+here is the one SANAD serves to students.
+
+Reproduce locally (use a real key; the dev key is not recorded here):
+
+```bash
+# SANAD
+EMBEDDING_MODEL=bge-m3 QDRANT_URL=http://localhost:6333 \
+  python -m uvicorn src.api.main:app --port 8000
+# LMS (separate repo)
+PORT=3102 SANAD_BASE_URL=http://localhost:8000 SANAD_API_KEY=... \
+  pnpm --filter api build && pnpm --filter api start:prod
+```
+
+The LMS commit is `5ac122d`; the SANAD benchmark commit is `33cc8e0`.
