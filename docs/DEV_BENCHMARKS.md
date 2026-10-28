@@ -262,7 +262,11 @@ balagha 5, arood 2, adab 9, lugha 3, quran 2, sira 2). The two SANAD
 `misc` banks are surfaced where learners expect them:
 `tahleel_egaba_v1` under adab and `tarikh_masr_v1` under sira. A new
 `sanad.scope.spec.ts` pins the 35-source/8-branch invariant. The LMS API
-suite is 357/357 (35 suites) and `nest build` is green.
+suite is 357/357 (35 suites) and `nest build` is green. The teacher
+grading UI previously omitted adab; its selector now renders All plus all
+eight branches from `apps/web/app/lib/sanad-branches.ts`, and a Vitest
+spec pins the nine entries (web suite 147/147, 10 files; `next build`
+green).
 
 Not exercised in this live run: `POST /evaluate/submission` / the LMS
 `evaluate-ai` essay-grading path. The 1024 benchmark collection is flat
@@ -281,4 +285,5 @@ PORT=3102 SANAD_BASE_URL=http://localhost:8000 SANAD_API_KEY=... \
   pnpm --filter api build && pnpm --filter api start:prod
 ```
 
-The LMS commit is `5ac122d`; the SANAD benchmark commit is `33cc8e0`.
+The LMS scope commit is `5ac122d`; the UI branch-selector commit is
+`cd03fb0`; the SANAD benchmark commit is `33cc8e0`.
